@@ -1311,7 +1311,7 @@ static bool init_graphics(void)
 
 		if (arg_graphics) {
 			int i = 0;
-			while (graphics_modes[i].grafID != 0)  {
+			while (graphics_modes[i].pNext)  {
 				if (graphics_modes[i].grafID == arg_graphics) {
 					mode = &(graphics_modes[i]);
 					break;
@@ -2894,7 +2894,7 @@ static void init_windows(void)
 	mii.cbSize = sizeof(MENUITEMINFO);
 	mii.fMask = MIIM_ID | MIIM_TYPE;
 	mii.fType = MFT_STRING;
-	while (graphics_modes[i].grafID != 0) {
+	while (graphics_modes[i].pNext) {
 		mii.wID = graphics_modes[i].grafID + IDM_OPTIONS_GRAPHICS_NONE;
 		mii.dwTypeData = graphics_modes[i].menuname;
 		mii.cch = strlen(graphics_modes[i].menuname);
@@ -3076,11 +3076,11 @@ static void setup_menus(void)
 	i = 0;
 	do {
 		EnableMenuItem(hm, graphics_modes[i].grafID + IDM_OPTIONS_GRAPHICS_NONE,
-					   MF_BYCOMMAND | MF_DISABLED | MF_GRAYED);
-	} while (graphics_modes[i++].grafID != 0); 
+		               MF_BYCOMMAND | MF_DISABLED | MF_GRAYED);
+	} while (graphics_modes[i++].pNext); 
 
 	EnableMenuItem(hm, IDM_OPTIONS_GRAPHICS_NICE,
-				   MF_BYCOMMAND | MF_DISABLED | MF_GRAYED);
+	               MF_BYCOMMAND | MF_DISABLED | MF_GRAYED);
 
 	for (i = IDM_OPTIONS_TILE_1x1; i < IDM_OPTIONS_TILE_16x16; i++) {
 		EnableMenuItem(hm, i, MF_BYCOMMAND | MF_DISABLED | MF_GRAYED);
@@ -3110,8 +3110,8 @@ static void setup_menus(void)
 	i = 0;
 	do {
 		CheckMenuItem(hm, graphics_modes[i].grafID + IDM_OPTIONS_GRAPHICS_NONE,
-					  (arg_graphics == graphics_modes[i].grafID ? MF_CHECKED : MF_UNCHECKED));
-	} while (graphics_modes[i++].grafID != 0); 
+		             (arg_graphics == graphics_modes[i].grafID ? MF_CHECKED : MF_UNCHECKED));
+	} while (graphics_modes[i++].pNext); 
 
 	CheckMenuItem(hm, IDM_OPTIONS_GRAPHICS_NICE,
 				  (arg_graphics_nice ? MF_CHECKED : MF_UNCHECKED));
@@ -3206,7 +3206,7 @@ static void setup_menus(void)
 		i = 0;
 		do {
 			EnableMenuItem(hm, graphics_modes[i].grafID + IDM_OPTIONS_GRAPHICS_NONE,MF_ENABLED );
-		} while (graphics_modes[i++].grafID != 0); 
+		} while (graphics_modes[i++].pNext); 
 
 		EnableMenuItem(hm, IDM_OPTIONS_GRAPHICS_NICE, MF_ENABLED);
 
@@ -4091,7 +4091,7 @@ static void process_menus(WORD wCmd)
 						selected_mode = desired_mode;
 						break;
 					}
-				} while (graphics_modes[i++].grafID != 0); 
+				} while (graphics_modes[i++].pNext); 
 
 				/* Toggle "arg_graphics" */
 				if (arg_graphics != selected_mode) {
