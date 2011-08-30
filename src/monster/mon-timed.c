@@ -57,7 +57,7 @@ static mon_timed_effect effects[] =
  * indicating that another monster caused this effect, then the chance of
  * success on the saving throw just depends on the monster's native depth.
  * Otherwise, the chance of success decreases as `timer` increases.
- * 
+ *
  * Also marks the lore for any appropriate resists.
  */
 static bool mon_resist_effect(const monster_type *m_ptr, int ef_idx, int timer, u16b flag)
@@ -208,10 +208,10 @@ static bool mon_set_timed(monster_type *m_ptr, int ef_idx, int timer, u16b flag)
 	/* Update the visuals, as appropriate. */
 	p_ptr->redraw |= (PR_MONLIST);
 
-	if (m_note && m_ptr->ml && !(flag & MON_TMD_FLG_NOMESSAGE) &&
+	if (m_note && !(flag & MON_TMD_FLG_NOMESSAGE) &&
 			(flag & MON_TMD_FLG_NOTIFY)) {
 		char m_name[80];
-		monster_desc(m_name, sizeof(m_name), m_ptr, 0);
+		monster_desc(m_name, sizeof(m_name), m_ptr, 0x04);
 		add_monster_message(m_name, m_ptr->midx, m_note, TRUE);
 	}
 
@@ -247,7 +247,7 @@ bool mon_inc_timed(int m_idx, int ef_idx, int timer, u16b flag)
 	if ((!m_ptr->m_timed[ef_idx]) && (timer < 2)) timer = 2;
 
 	/* New counter amount - prevent overflow */
-	if (MAX_SHORT - timer > m_ptr->m_timed[ef_idx])
+	if (MAX_SHORT - timer < m_ptr->m_timed[ef_idx])
 		timer = MAX_SHORT;
 	else
 		timer += m_ptr->m_timed[ef_idx];
