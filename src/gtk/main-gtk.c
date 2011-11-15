@@ -1628,17 +1628,16 @@ static void init_graf(int g)
 	term_data *td= &data[0];
 	int i = 0;
 	
-	do {
-		if (g == graphics_modes[i].grafID) {
-			arg_graphics = g;
-			ANGBAND_GRAF = graphics_modes[i].pref;
-			path_build(buf, sizeof(buf), ANGBAND_DIR_XTRA_GRAF, graphics_modes[i].file);
-			use_transparency = FALSE;
-			td->tile.w = graphics_modes[i].cell_width;
-			td->tile.h = graphics_modes[i].cell_height;
-			break;
-		}
-	} while (graphics_modes[i++].grafID != 0);
+	current_graphics_mode = get_graphics_mode(g);
+	if (current_graphics_mode) {
+		arg_graphics = g;
+		ANGBAND_GRAF = current_graphics_mode->pref;
+		path_build(buf, sizeof(buf), ANGBAND_DIR_XTRA_GRAF, current_graphics_mode->file);
+		use_transparency = FALSE;
+		td->tile.w = current_graphics_mode->cell_width;
+		td->tile.h = current_graphics_mode->cell_height;
+		break;
+	}
 
 	/* Free up old graphics */
 	if (graphical_tiles != NULL) cairo_surface_destroy(graphical_tiles);

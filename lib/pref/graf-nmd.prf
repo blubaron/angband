@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # File: graf-nmd.prf
 
 # This file defines special attr/char mappings for use in "graphics" mode
@@ -2619,3 +2620,4 @@ R:616:0xB5:0x98
 
 # Load the flavored objects
 %:flvr-nmd.prf
+

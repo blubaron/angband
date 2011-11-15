@@ -1557,7 +1557,7 @@ static void MoreDraw(sdl_Window *win)
 		button = sdl_ButtonBankGet(&win->buttons, GfxButtons[graphics_modes[i].grafID]);
 		sdl_ButtonMove(button, 200, y);
 		y += 20;
-	} while (graphics_modes[i++].grafID != 0); 
+	} while (graphics_modes[i++].pNext); 
 #endif	
 
 	button = sdl_ButtonBankGet(&win->buttons, MoreFullscreen);
@@ -1649,7 +1649,7 @@ static void MoreActivate(sdl_Button *sender)
 		sdl_ButtonCaption(button, graphics_modes[i].menuname);
 		button->tag = graphics_modes[i].grafID;
 		button->activate = SelectGfx;
-	} while (graphics_modes[i++].grafID != 0); 
+	} while (graphics_modes[i++].pNext); 
 #endif
 	MoreFullscreen = sdl_ButtonBankNew(&PopUp.buttons);
 	button = sdl_ButtonBankGet(&PopUp.buttons, MoreFullscreen);
@@ -3468,7 +3468,7 @@ static void init_gfx(void)
 				current_graphics_mode = &(graphics_modes[i]);
 			}
 		}
-	} while (graphics_modes[i++].grafID != 0); 
+	} while (graphics_modes[i++].pNext); 
 	
 	/* Check availability (default to no graphics) */
 	if (!current_graphics_mode->file[0])
