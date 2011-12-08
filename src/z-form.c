@@ -495,6 +495,7 @@ size_t vstrnfmt(char *buf, size_t max, const char *fmt, va_list vp)
 				{
 					const wchar_t *arg;
 					char arg2[1024];
+					int len, i;
 
 					/* XXX There is a big bug here: if one
 					 * passes "%.0s" to strnfmt, then really we
