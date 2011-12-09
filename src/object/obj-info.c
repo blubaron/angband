@@ -145,6 +145,14 @@ static const flag_type ignore_flags[] =
 	{ OF_IGNORE_COLD, "cold" },
 };
 
+static const flag_type hates_flags[] =
+{
+	{ OF_HATES_ACID, "acid" },
+	{ OF_HATES_ELEC, "electricity" },
+	{ OF_HATES_FIRE, "fire" },
+	{ OF_HATES_COLD, "cold" },
+};
+
 static const flag_type sustain_flags[] =
 {
 	{ OF_SUST_STR, "strength" },
@@ -303,7 +311,7 @@ static bool describe_immune(textblock *tb, const bitflag flags[OF_SIZE])
 
 
 /*
- * Describe 'ignores' of an object.
+ * Describe IGNORE_ flags of an object.
  */
 static bool describe_ignores(textblock *tb, const bitflag flags[OF_SIZE])
 {
@@ -315,6 +323,24 @@ static bool describe_ignores(textblock *tb, const bitflag flags[OF_SIZE])
 		return FALSE;
 
 	textblock_append(tb, "Cannot be harmed by ");
+	info_out_list(tb, descs, count);
+
+	return TRUE;
+}
+
+/*
+ * Describe HATES_ flags of an object.
+ */
+static bool describe_hates(textblock *tb, const bitflag flags[OF_SIZE])
+{
+	const char *descs[N_ELEMENTS(hates_flags)];
+	size_t count = info_collect(tb, hates_flags, N_ELEMENTS(hates_flags),
+			flags, descs);
+
+	if (!count)
+		return FALSE;
+
+	textblock_append(tb, "Can be destroyed by ");
 	info_out_list(tb, descs, count);
 
 	return TRUE;
@@ -590,12 +616,12 @@ static bool describe_blows(textblock *tb, const object_type *o_ptr,
  * Describe damage.
  */
 static bool describe_damage(textblock *tb, const object_type *o_ptr,
-		player_state state, bitflag f[OF_SIZE])
+		player_state state, bitflag f[OF_SIZE], oinfo_detail_t mode)
 {
 	const char *desc[SL_MAX] = { 0 };
-	int i;
+	size_t i, cnt;
 	int mult[SL_MAX];
-	int cnt, dam, total_dam, plus = 0;
+	int dice, sides, dam, total_dam, plus = 0;
 	int xtra_postcrit = 0, xtra_precrit = 0;
 	int crit_mult, crit_div, crit_add;
 	int old_blows = 0;
@@ -607,17 +633,26 @@ static bool describe_damage(textblock *tb, const object_type *o_ptr,
 	bool ammo   = (p_ptr->state.ammo_tval == o_ptr->tval) &&
 	              (bow->kind);
 	int multiplier = 1;
+	bool full = mode & OINFO_FULL;
 
 	/* Create the "all slays" mask */
 	create_mask(mask, FALSE, OFT_SLAY, OFT_KILL, OFT_BRAND, OFT_MAX);
 
-	if (weapon)
-	{
-		dam = ((o_ptr->ds + 1) * o_ptr->dd * 5);
+	/* Use displayed dice if real dice not known */
+	if (full || object_attack_plusses_are_visible(o_ptr)) {
+		dice = o_ptr->dd;
+		sides = o_ptr->ds;
+	} else {
+		dice = o_ptr->kind->dd;
+		sides = o_ptr->kind->ds;
+	}
 
+	/* Calculate damage */
+	dam = ((sides + 1) * dice * 5);
+
+	if (weapon)	{
 		xtra_postcrit = state.dis_to_d * 10;
-		if (object_attack_plusses_are_visible(o_ptr))
-		{
+		if (object_attack_plusses_are_visible(o_ptr) || full) {
 			xtra_precrit += o_ptr->to_d * 10;
 			plus += o_ptr->to_h;
 		}
@@ -626,19 +661,14 @@ static bool describe_damage(textblock *tb, const object_type *o_ptr,
 				&crit_mult, &crit_add, &crit_div);
 
 		old_blows = state.num_blows;
-	}
-	else /* Ammo */
-	{
-		if (object_attack_plusses_are_visible(o_ptr))
+	} else { /* Ammo */
+		if (object_attack_plusses_are_visible(o_ptr) || full)
 			plus += o_ptr->to_h;
 
 		calculate_missile_crits(&p_ptr->state, o_ptr->weight, plus,
 				&crit_mult, &crit_add, &crit_div);
 
-		/* Calculate damage */
-		dam = ((o_ptr->ds + 1) * o_ptr->dd * 5);
-
-		if (object_attack_plusses_are_visible(o_ptr))
+		if (object_attack_plusses_are_visible(o_ptr) || full)
 			dam += (o_ptr->to_d * 10);
 		if (object_attack_plusses_are_visible(bow))
 			dam += (bow->to_d * 10);
@@ -652,12 +682,10 @@ static bool describe_damage(textblock *tb, const object_type *o_ptr,
 
 	/* Collect slays */
 	/* Melee weapons get slays and brands from other items now */
-	if (weapon)
-	{
+	if (weapon)	{
 		bool nonweap_slay = FALSE;
 
-		for (i = INVEN_LEFT; i < INVEN_TOTAL; i++)
-		{
+		for (i = INVEN_LEFT; i < INVEN_TOTAL; i++) {
 			if (!p_ptr->inventory[i].kind)
 				continue;
 
@@ -680,17 +708,16 @@ static bool describe_damage(textblock *tb, const object_type *o_ptr,
 
 	/* Output damage for creatures effected by the brands or slays */
 	cnt = list_slays(f, mask, desc, NULL, mult, TRUE);
-	for (i = 0; i < cnt; i++)
-	{
+	for (i = 0; i < cnt; i++) {
 		/* ammo mult adds fully, melee mult is times 1, so adds 1 less */
-		int melee_adj_mult = ammo ? 0 : 1; 
+		int melee_adj_mult = ammo ? 0 : 1;
 
 		/* Include bonus damage and slay in stated average */
 		total_dam = dam * (multiplier + mult[i] - melee_adj_mult) + xtra_precrit;
 		total_dam = (total_dam * crit_mult + crit_add) / crit_div;
 		total_dam += xtra_postcrit;
 
-		if (weapon) 
+		if (weapon)
 			total_dam = (total_dam * old_blows) / 100;
 		else
 			total_dam *= p_ptr->state.num_shots;
@@ -756,8 +783,7 @@ static bool describe_combat(textblock *tb, const object_type *o_ptr,
 	/* Abort if we've nothing to say */
 	if (mode & OINFO_DUMMY) return FALSE;
 
-	if (!weapon && !ammo)
-	{
+	if (!weapon && !ammo) {
 		/* Potions can have special text */
 		if (o_ptr->tval != TV_POTION ||
 				o_ptr->dd == 0 || o_ptr->ds == 0 ||
@@ -768,16 +794,14 @@ static bool describe_combat(textblock *tb, const object_type *o_ptr,
 		return TRUE;
 	}
 
-	if (full) {
+	if (full)
 		object_flags(o_ptr, f);
-	} else {
+	else
 		object_flags_known(o_ptr, f);
-	}
 
 	textblock_append_c(tb, TERM_L_WHITE, "Combat info:\n");
 
-	if (weapon)
-	{
+	if (weapon)	{
 		object_type inven[INVEN_TOTAL];
 
 		memcpy(inven, p_ptr->inventory, INVEN_TOTAL * sizeof(object_type));
@@ -794,9 +818,7 @@ static bool describe_combat(textblock *tb, const object_type *o_ptr,
 
 		/* Describe blows */
 		describe_blows(tb, o_ptr, state, f);
-	}
-	else /* Ammo */
-	{
+	} else { /* Ammo */
 		/* Range of the weapon */
 		int tdis = 6 + 2 * p_ptr->state.ammo_mult;
 
@@ -807,15 +829,14 @@ static bool describe_combat(textblock *tb, const object_type *o_ptr,
 	}
 
 	/* Describe damage */
-	describe_damage(tb, o_ptr, state, f);
+	describe_damage(tb, o_ptr, state, f, mode);
 
 	/* Note the impact flag */
 	if (of_has(f, OF_IMPACT))
 		textblock_append(tb, "Sometimes creates earthquakes on impact.\n");
 
 	/* Add breakage chance */
-	if (ammo)
-	{
+	if (ammo) {
 		int chance = breakage_chance(o_ptr, TRUE);
 		textblock_append_c(tb, TERM_L_GREEN, "%d%%", chance);
 		textblock_append(tb, " chance of breaking upon contact.\n");
@@ -1324,6 +1345,8 @@ static textblock *object_info_out(const object_type *o_ptr, oinfo_detail_t mode)
 	if (describe_slays(tb, flags, o_ptr->tval)) something = TRUE;
 	if (describe_immune(tb, flags)) something = TRUE;
 	if (describe_ignores(tb, flags)) something = TRUE;
+	dedup_hates_flags(flags);
+	if (describe_hates(tb, flags)) something = TRUE;
 	if (describe_sustains(tb, flags)) something = TRUE;
 	if (describe_misc_magic(tb, flags)) something = TRUE;
 	if (ego && describe_ego(tb, o_ptr->ego)) something = TRUE;
