@@ -3405,7 +3405,8 @@ static void start_screensaver(void)
  */
 static void display_help(const char *filename)
 {
-	plog("Use the online help files instead.");
+	Term_keypress('?',0);
+	//plog("Use the online help files instead.");
 }
 
 
