@@ -341,15 +341,19 @@ ui_event inkey_ex(void)
 #ifdef ALLOW_BORG
 
 	/* Mega-Hack -- Use the special hook */
-	if (inkey_hack && ((ke.key = (*inkey_hack)(inkey_xtra)) != 0))
+	if (inkey_hack)
 	{
-		/* Cancel the various "global parameters" */
-		inkey_flag = FALSE;
-		inkey_scan = 0;
-		ke.type = EVT_KBRD;
+		ke.key = (*inkey_hack)(inkey_xtra);
+		if (ke.key.type != EVT_NONE)
+		{
+			/* Cancel the various "global parameters" */
+			inkey_flag = FALSE;
+			inkey_scan = 0;
+			ke.type = EVT_KBRD;
 
-		/* Accept result */
-		return (ke);
+			/* Accept result */
+			return (ke);
+		}
 	}
 
 #endif /* ALLOW_BORG */
@@ -1469,7 +1473,7 @@ bool askfor_aux_keypress(char *buf, size_t buflen, size_t *curs, size_t *len, st
  * 'askfor_aux_keypress' (the default handler if you supply NULL for
  * 'keypress_h') for an example.
  */
-bool askfor_aux(char *buf, size_t len, bool keypress_h(char *, size_t, size_t *, size_t *, struct keypress, bool))
+bool askfor_aux(char *buf, size_t len, bool (*keypress_h)(char *, size_t, size_t *, size_t *, struct keypress, bool))
 {
 	int y, x;
 
@@ -2129,7 +2133,7 @@ void build_gamma_table(int gamma)
 		 * Store the value in the table so that the
 		 * floating point pow function isn't needed.
 		 */
-		gamma_table[i] = ((long)(value / 256) * i) / 256;
+		gamma_table[i] = (byte)(((long)(value / 256) * i) / 256);
 	}
 }
 
