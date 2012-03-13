@@ -62,7 +62,7 @@ void do_cmd_go_up(cmd_code code, cmd_arg args[])
 	p_ptr->create_down_stair = TRUE;
 
 	/* Change level */
-	dungeon_change_level(p_ptr->depth - 1);
+	dungeon_change_level(p_ptr->depth - level_change_step);
 }
 
 
@@ -89,7 +89,11 @@ void do_cmd_go_down(cmd_code code, cmd_arg args[])
 	p_ptr->create_down_stair = FALSE;
 
 	/* Change level */
-	dungeon_change_level(p_ptr->depth + 1);
+	if (p_ptr->depth == 0) {
+		dungeon_change_level(1);
+	} else {
+		dungeon_change_level(p_ptr->depth + level_change_step);
+	}
 }
 
 

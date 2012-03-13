@@ -54,6 +54,7 @@ extern u32b seed_flavor;
 extern u32b seed_town;
 extern s16b num_repro;
 extern s32b turn;
+extern byte level_change_step;
 extern int use_graphics;
 extern bool use_graphics_nice;
 extern s16b signal_count;

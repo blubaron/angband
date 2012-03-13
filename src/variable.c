@@ -66,7 +66,10 @@ u32b seed_town;			/* Hack -- consistent town layout */
 
 s16b num_repro;			/* Current reproducer count */
 
-s32b turn;				/* Current game turn */
+s32b turn;			/* Current game turn */
+
+byte level_change_step = 3;	/* how many levels to skip when going up or down stairs*/
+/* should be moved to player_other struct */
 
 int use_graphics;		/* The "graphics" mode is enabled */
 bool use_graphics_nice;	        /* The 'nice' "graphics" mode is enabled */

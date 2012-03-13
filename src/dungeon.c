@@ -39,6 +39,26 @@
  */
 void dungeon_change_level(int dlev)
 {
+	int i;
+
+	/* check for special levels */
+	if (dlev > p_ptr->depth) {
+		for (i = p_ptr->depth; i < dlev; i++) {
+			if (is_quest(i)) break;
+			if (i >= MAXDEPTH - 1) break;
+		}
+	} else {
+		for (i = p_ptr->depth-1; i > dlev; i--) {
+			if (is_quest(i)) break;
+			if (i <= 0) break;
+		}
+	}
+	dlev = i;
+
+	/* make sure dlev is in the valid range */
+	if (dlev < 0) dlev = 0;
+	if (dlev > MAXDEPTH - 1) dlev = MAXDEPTH - 1;
+
 	/* New depth */
 	p_ptr->depth = dlev;
 

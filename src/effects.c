@@ -1930,7 +1930,7 @@ bool effect_do(effect_type effect, bool *ident, bool aware, int dir, int beam,
 			}
 			wieldeds_notice_flag(p_ptr, OF_FEATHER);
 
-			dungeon_change_level(p_ptr->depth + 1);
+			dungeon_change_level(p_ptr->depth + level_change_step);
 			return TRUE;
 		}
 
