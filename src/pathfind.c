@@ -73,6 +73,7 @@ static void fill_terrain_info(void)
 bool findpath(int y, int x)
 {
 	int i, j, k, dir;
+	int oxl, oyl, exl, eyl;
 	bool try_again;
 	int cur_distance;
 
@@ -104,37 +105,84 @@ bool findpath(int y, int x)
 	}
 
 	/* 
-	 * And now starts the very naive and very 
-	 * inefficient pathfinding algorithm
+	 * this algorithm is more efficient than the previous in most cases.
 	 */
-	do
-	{
+	cur_distance = 2;
+	for (dir = 1; dir < 10; dir++) {
+		if (dir != 5) {
+			MARK_DISTANCE(terrain[p_ptr->py - oy + ddy[dir]][p_ptr->px - ox + ddx[dir]], cur_distance);
+		}
+	}
+
+	do {
 		try_again = FALSE;
 
-		for (j = oy + 1; j < ey - 1; j++)
-		{
-			for (i = ox + 1; i < ex - 1; i++)
-			{
+		for (k = 1; k < MAX_PF_RADIUS/2 - 1; k++) {
+			oxl = MAX(p_ptr->px - k, ox+1);
+			oyl = MAX(p_ptr->py - k, oy+1);
+			exl = MIN(p_ptr->px + k, ex-1);
+			eyl = MIN(p_ptr->px + k, ey-1);
+
+			j = oyl;
+			for (i = oxl; i < exl; i++) {
 				cur_distance = terrain[j - oy][i - ox] + 1;
 
-				if ((cur_distance > 0) && (cur_distance < MAX_PF_LENGTH))
-				{
-					for (dir = 1; dir < 10; dir++)
-					{
-						if (dir == 5)
-							dir++;
-
-						MARK_DISTANCE(terrain[j - oy + ddy[dir]][i - ox + ddx[dir]], cur_distance);
+				if ((cur_distance > 0) && (cur_distance < MAX_PF_LENGTH)) {
+					for (dir = 1; dir < 10; dir++) {
+						if (dir != 5) {
+							MARK_DISTANCE(terrain[j - oy + ddy[dir]][i - ox + ddx[dir]], cur_distance);
+						}
 					}
 				}
 			}
+			j = eyl;
+			for (i = oxl; i < exl; i++) {
+				cur_distance = terrain[j - oy][i - ox] + 1;
+
+				if ((cur_distance > 0) && (cur_distance < MAX_PF_LENGTH)) {
+					for (dir = 1; dir < 10; dir++) {
+						if (dir != 5) {
+							MARK_DISTANCE(terrain[j - oy + ddy[dir]][i - ox + ddx[dir]], cur_distance);
+						}
+					}
+				}
+			}
+			i = oxl;
+			for (j = oyl; j < eyl; j++) {
+				cur_distance = terrain[j - oy][i - ox] + 1;
+
+				if ((cur_distance > 0) && (cur_distance < MAX_PF_LENGTH)) {
+					for (dir = 1; dir < 10; dir++) {
+						if (dir != 5) {
+							MARK_DISTANCE(terrain[j - oy + ddy[dir]][i - ox + ddx[dir]], cur_distance);
+						}
+					}
+				}
+			}
+			i = exl;
+			for (j = oyl; j < eyl; j++) {
+				cur_distance = terrain[j - oy][i - ox] + 1;
+
+				if ((cur_distance > 0) && (cur_distance < MAX_PF_LENGTH)) {
+					for (dir = 1; dir < 10; dir++) {
+						if (dir != 5) {
+							MARK_DISTANCE(terrain[j - oy + ddy[dir]][i - ox + ddx[dir]], cur_distance);
+						}
+					}
+				}
+			}
+
+			if (terrain[y - oy][x - ox] < 0) {
+				try_again = (FALSE);
+				break;
+			}
+			if (terrain[y - oy][x - ox] < MAX_PF_LENGTH) {
+				try_again = (FALSE);
+				break;
+			}
 		}
 
-		if (terrain[y - oy][x - ox] < MAX_PF_LENGTH)
-			try_again = (FALSE);
-
-	}
-	while (try_again);
+	} while (try_again);
 
 	/* Failure */
 	if (terrain[y - oy][x - ox] == MAX_PF_LENGTH)
