@@ -18,31 +18,6 @@
 #include "angband.h"
 #include "object/tvalsval.h"
 
-
-/*
- * Global array for looping through the "keypad directions".
- */
-const s16b ddd[9] =
-{ 2, 8, 6, 4, 3, 1, 9, 7, 5 };
-
-/*
- * Global arrays for converting "keypad direction" into "offsets".
- */
-const s16b ddx[10] =
-{ 0, -1, 0, 1, -1, 0, 1, -1, 0, 1 };
-
-const s16b ddy[10] =
-{ 0, 1, 1, 1, 0, 0, 0, -1, -1, -1 };
-
-/*
- * Global arrays for optimizing "ddx[ddd[i]]" and "ddy[ddd[i]]".
- */
-const s16b ddx_ddd[9] =
-{ 0, 0, 1, -1, 1, -1, 1, -1, 0 };
-
-const s16b ddy_ddd[9] =
-{ 1, -1, 0, 0, 1, 1, -1, -1, 0 };
-
 /*
  * This table allows quick conversion from "speed" to "energy"
  * The basic function WAS ((S>=110) ? (S-110) : (100 / (120-S)))

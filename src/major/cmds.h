@@ -3,12 +3,6 @@
 
 #include "game-cmd.h"
 
-/* 
- * Command handlers will take a pointer to the command structure
- * so that they can access any arguments supplied.
- */
-typedef void (*cmd_handler_fn)(cmd_code code, cmd_arg args[]);
-
 /* cmd0.c */
 extern void cmd_init(void);
 unsigned char cmd_lookup_key(cmd_code cmd);

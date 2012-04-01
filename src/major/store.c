@@ -2919,6 +2919,9 @@ static bool store_menu_handle(menu_type *m, const ui_event *event, int oid)
 			if (action) {
 				store_flags |= (STORE_FRAME_CHANGE | STORE_GOLD_CHANGE);
 
+				/* Reset so that when selecting items, we look in the default location */
+				p_ptr->command_wrk = 0;
+
 				/* Let the game handle any core commands (equipping, etc) */
 				process_command(CMD_STORE, TRUE);
 
@@ -2975,6 +2978,9 @@ static bool store_menu_handle(menu_type *m, const ui_event *event, int oid)
 			default:
 				processed = store_process_command_key(event->key);
 		}
+
+		/* Reset so that when selecting items, we look in the default location */
+		p_ptr->command_wrk = 0;
 
 		/* Let the game handle any core commands (equipping, etc) */
 		process_command(CMD_STORE, TRUE);

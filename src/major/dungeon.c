@@ -1096,6 +1096,9 @@ static void process_player(void)
 			/* Clear the top line */
 			prt("", 0, 0);
 
+			/* Reset so that when selecting items, we look in the default location */
+			p_ptr->command_wrk = 0;
+
 			/* Process the command */
 			process_command(CMD_GAME, TRUE);
 		}
@@ -1108,6 +1111,9 @@ static void process_player(void)
 
 			/* Place the cursor on the player */
 			move_cursor_relative(p_ptr->py, p_ptr->px);
+
+			/* Reset so that when selecting items, we look in the default location */
+			p_ptr->command_wrk = 0;
 
 			/* Get and process a command */
 			process_command(CMD_GAME, FALSE);
