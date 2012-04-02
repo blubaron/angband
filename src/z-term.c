@@ -537,6 +537,7 @@ void Term_big_queue_char(term *t, int x, int y, byte a, wchar_t c, byte a1, wcha
 			/* Now vertical */
 			for (vert = 1; vert <= tile_height; vert++)
 			{
+				if (y + vert + 1 < t->hgt)
 			        /* Queue dummy character */
 			        if (a & 0x80)
 				        Term_queue_char(t, x + hor, y + vert, 255, -1, 0, 0);
@@ -550,6 +551,7 @@ void Term_big_queue_char(term *t, int x, int y, byte a, wchar_t c, byte a1, wcha
 	        /* Only vertical */
 	        for (vert = 1; vert <= tile_height; vert++)
 		{
+			if (y + vert + 1 < t->hgt)
 		        /* Queue dummy character */
 		        if (a & 0x80)
 			        Term_queue_char(t, x, y + vert, 255, -1, 0, 0);
