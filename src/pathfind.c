@@ -124,7 +124,7 @@ bool findpath(int y, int x)
 			eyl = MIN(p_ptr->py + k, ey-1);
 
 			j = oyl;
-			for (i = oxl; i < exl; i++) {
+			for (i = oxl; i <= exl; i++) {
 				cur_distance = terrain[j - oy][i - ox] + 1;
 
 				if ((cur_distance > 0) && (cur_distance < MAX_PF_LENGTH)) {
@@ -136,7 +136,7 @@ bool findpath(int y, int x)
 				}
 			}
 			j = eyl;
-			for (i = oxl; i < exl; i++) {
+			for (i = oxl; i <= exl; i++) {
 				cur_distance = terrain[j - oy][i - ox] + 1;
 
 				if ((cur_distance > 0) && (cur_distance < MAX_PF_LENGTH)) {
@@ -148,7 +148,7 @@ bool findpath(int y, int x)
 				}
 			}
 			i = oxl;
-			for (j = oyl; j < eyl; j++) {
+			for (j = oyl; j <= eyl; j++) {
 				cur_distance = terrain[j - oy][i - ox] + 1;
 
 				if ((cur_distance > 0) && (cur_distance < MAX_PF_LENGTH)) {
@@ -160,7 +160,7 @@ bool findpath(int y, int x)
 				}
 			}
 			i = exl;
-			for (j = oyl; j < eyl; j++) {
+			for (j = oyl; j <= eyl; j++) {
 				cur_distance = terrain[j - oy][i - ox] + 1;
 
 				if ((cur_distance > 0) && (cur_distance < MAX_PF_LENGTH)) {
