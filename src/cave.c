@@ -532,6 +532,10 @@ void grid_data_as_text(grid_data *g, byte *ap, wchar_t *cp, byte *tap, wchar_t *
 	byte a = f_ptr->x_attr[g->lighting];
 	wchar_t c = f_ptr->x_char[g->lighting];
 
+	if (g->alternate_feat && f_ptr->g_char[g->lighting]) {
+		a = f_ptr->g_attr[g->lighting];
+		c = f_ptr->g_char[g->lighting];
+	}
 	/* Check for trap detection boundaries */
 	if (use_graphics == GRAPHICS_NONE)
 		grid_get_attr(g, &a);
@@ -805,6 +809,7 @@ void map_info(unsigned y, unsigned x, grid_data *g)
 	g->m_idx = (g->is_player) ? 0 : cave->m_idx[y][x];
 	g->hallucinate = p_ptr->timed[TMD_IMAGE] ? TRUE : FALSE;
 	g->trapborder = (cave->info2[y][x] & CAVE2_DEDGE) ? TRUE : FALSE;
+	g->alternate_feat = (cave->info2[y][x] & CAVE2_VERT) ? TRUE : FALSE;
 
 	if (g->in_view)
 	{
