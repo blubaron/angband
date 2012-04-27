@@ -121,7 +121,7 @@ bool findpath(int y, int x)
 			oxl = MAX(p_ptr->px - k, ox+1);
 			oyl = MAX(p_ptr->py - k, oy+1);
 			exl = MIN(p_ptr->px + k, ex-1);
-			eyl = MIN(p_ptr->px + k, ey-1);
+			eyl = MIN(p_ptr->py + k, ey-1);
 
 			j = oyl;
 			for (i = oxl; i < exl; i++) {
@@ -172,10 +172,12 @@ bool findpath(int y, int x)
 				}
 			}
 
+			/* paranoia */
 			if (terrain[y - oy][x - ox] < 0) {
 				try_again = (FALSE);
 				break;
 			}
+			/* see if the goal was found */
 			if (terrain[y - oy][x - ox] < MAX_PF_LENGTH) {
 				try_again = (FALSE);
 				break;
