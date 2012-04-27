@@ -76,6 +76,8 @@ bool findpath(int y, int x)
 	int oxl, oyl, exl, eyl;
 	bool try_again;
 	int cur_distance;
+	s16b mddx[10];
+	s16b mddy[10];
 
 	fill_terrain_info();
 
@@ -83,18 +85,6 @@ bool findpath(int y, int x)
 
 	if ((x >= ox) && (x < ex) && (y >= oy) && (y < ey))
 	{
-		if ((cave->m_idx[y][x] > 0) && (cave_monster_at(cave, y, x)->ml))
-		{
-			terrain[y - oy][x - ox] = MAX_PF_LENGTH;
-		}
-
-#if 0
-		else if (terrain[y-oy][x-ox] != MAX_PF_LENGTH)
-		{
-		   bell("Target blocked");
-		   return (FALSE);
-		}
-#endif
 
 		terrain[y - oy][x - ox] = MAX_PF_LENGTH;
 	}
@@ -105,14 +95,24 @@ bool findpath(int y, int x)
 	}
 
 	/* 
-	 * this algorithm is more efficient than the previous in most cases.
+	 * this algorithm is more efficient than the previous in most, but not all cases.
 	 */
 	cur_distance = 2;
 	for (dir = 1; dir < 10; dir++) {
+		/*
+		 * preapply this subtraction since it is the same for all of the 
+		 * loops below
+		 */
+		mddx[dir] = ox - ddx[dir];
+		mddy[dir] = oy - ddy[dir];
+		
 		if (dir != 5) {
-			MARK_DISTANCE(terrain[p_ptr->py - oy + ddy[dir]][p_ptr->px - ox + ddx[dir]], cur_distance);
+			MARK_DISTANCE(terrain[p_ptr->py - mddy[dir]][p_ptr->px - mddx[dir]], cur_distance);
 		}
 	}
+	/* paranoia */
+	mddx[0] = ox - ddx[0];
+	mddy[0] = oy - ddy[0];
 
 	do {
 		try_again = FALSE;
@@ -130,7 +130,7 @@ bool findpath(int y, int x)
 				if ((cur_distance > 0) && (cur_distance < MAX_PF_LENGTH)) {
 					for (dir = 1; dir < 10; dir++) {
 						if (dir != 5) {
-							MARK_DISTANCE(terrain[j - oy + ddy[dir]][i - ox + ddx[dir]], cur_distance);
+							MARK_DISTANCE(terrain[j - mddy[dir]][i - mddx[dir]], cur_distance);
 						}
 					}
 				}
@@ -142,7 +142,7 @@ bool findpath(int y, int x)
 				if ((cur_distance > 0) && (cur_distance < MAX_PF_LENGTH)) {
 					for (dir = 1; dir < 10; dir++) {
 						if (dir != 5) {
-							MARK_DISTANCE(terrain[j - oy + ddy[dir]][i - ox + ddx[dir]], cur_distance);
+							MARK_DISTANCE(terrain[j - mddy[dir]][i - mddx[dir]], cur_distance);
 						}
 					}
 				}
@@ -154,7 +154,7 @@ bool findpath(int y, int x)
 				if ((cur_distance > 0) && (cur_distance < MAX_PF_LENGTH)) {
 					for (dir = 1; dir < 10; dir++) {
 						if (dir != 5) {
-							MARK_DISTANCE(terrain[j - oy + ddy[dir]][i - ox + ddx[dir]], cur_distance);
+							MARK_DISTANCE(terrain[j - mddy[dir]][i - mddx[dir]], cur_distance);
 						}
 					}
 				}
@@ -166,7 +166,7 @@ bool findpath(int y, int x)
 				if ((cur_distance > 0) && (cur_distance < MAX_PF_LENGTH)) {
 					for (dir = 1; dir < 10; dir++) {
 						if (dir != 5) {
-							MARK_DISTANCE(terrain[j - oy + ddy[dir]][i - ox + ddx[dir]], cur_distance);
+							MARK_DISTANCE(terrain[j - mddy[dir]][i - mddx[dir]], cur_distance);
 						}
 					}
 				}
