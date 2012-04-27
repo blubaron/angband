@@ -712,6 +712,53 @@ static enum parser_error parse_prefs_f(struct parser *p)
 	return PARSE_ERROR_NONE;
 }
 
+static enum parser_error parse_prefs_h(struct parser *p)
+{
+	int idx;
+	feature_type *feature;
+
+	const char *lighting;
+	int light_idx;
+
+	struct prefs_data *d = parser_priv(p);
+	assert(d != NULL);
+	if (d->bypass) return PARSE_ERROR_NONE;
+
+	idx = parser_getuint(p, "idx");
+	if (idx >= z_info->f_max)
+		return PARSE_ERROR_OUT_OF_BOUNDS;
+
+	lighting = parser_getsym(p, "lighting");
+	if (streq(lighting, "bright"))
+		light_idx = FEAT_LIGHTING_BRIGHT;
+	else if (streq(lighting, "lit"))
+		light_idx = FEAT_LIGHTING_LIT;
+	else if (streq(lighting, "dark"))
+		light_idx = FEAT_LIGHTING_DARK;
+	else if (streq(lighting, "all"))
+		light_idx = FEAT_LIGHTING_MAX;
+	else
+		return PARSE_ERROR_GENERIC; /* xxx fixme */
+
+	if (light_idx < FEAT_LIGHTING_MAX)
+	{
+		feature = &f_info[idx];
+		feature->g_attr[light_idx] = (byte)parser_getint(p, "attr");
+		feature->g_char[light_idx] = (wchar_t)parser_getint(p, "char");
+	}
+	else
+	{
+		for (light_idx = 0; light_idx < FEAT_LIGHTING_MAX; light_idx++)
+		{
+			feature = &f_info[idx];
+			feature->g_attr[light_idx] = (byte)parser_getint(p, "attr");
+			feature->g_char[light_idx] = (wchar_t)parser_getint(p, "char");
+		}
+	}
+
+	return PARSE_ERROR_NONE;
+}
+
 static enum parser_error parse_prefs_gf(struct parser *p)
 {
 	bool types[GF_MAX] = { 0 };
@@ -1015,6 +1062,7 @@ static struct parser *init_parse_prefs(bool user)
 	parser_reg(p, "K sym tval sym sval int attr int char", parse_prefs_k);
 	parser_reg(p, "R uint idx int attr int char", parse_prefs_r);
 	parser_reg(p, "F uint idx sym lighting int attr int char", parse_prefs_f);
+	parser_reg(p, "H uint idx sym lighting int attr int char", parse_prefs_h);
 	parser_reg(p, "GF sym type sym direction uint attr uint char", parse_prefs_gf);
 	parser_reg(p, "L uint idx int attr int char", parse_prefs_l);
 	parser_reg(p, "E sym tval int attr", parse_prefs_e);

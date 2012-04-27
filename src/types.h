@@ -97,6 +97,9 @@ typedef struct feature
 
 	byte x_attr[3];   /**< Desired feature attribute (set by user/pref file) */
 	wchar_t x_char[3];   /**< Desired feature character (set by user/pref file) */
+
+	byte g_attr[3];   /* Alternate feature attribute (set by user/pref file) */
+	wchar_t g_char[3];   /* Alternate feature character (set by user/pref file) */
 } feature_type;
 
 
@@ -220,6 +223,7 @@ typedef struct
 	bool is_player;
 	bool hallucinate;
 	bool trapborder;
+	bool alternate_feat;
 } grid_data;
 
 
