@@ -395,6 +395,14 @@ void process_command(cmd_context ctx, bool no_request)
 
 				char prompt[1024], none[1024];
 
+				/* 
+				 * HACK - if we are trying to use a generic item, make
+				 * to start in the inventory list
+				 */
+				if (cmd->command == CMD_USE_ANY) {
+					p_ptr->command_wrk = USE_INVEN;
+				}
+
 				/* Pluralise correctly or things look weird */
 				if (!type) {
 					type = "item";
