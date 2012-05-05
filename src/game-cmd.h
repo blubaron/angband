@@ -77,19 +77,20 @@ typedef enum cmd_code
 	CMD_ENTER_STORE,
 	CMD_ALTER,
 
-    /* Store commands */	
+	/* Store commands */	
 	CMD_SELL,
 	CMD_BUY,
 	CMD_STASH,
 	CMD_RETRIEVE,
 
-  /* commands added by Brett */	
-  /* use a rod, wand, or fire ammo */
-  CMD_USE_AIMED,
-  /* use a staff, scroll, potion, or food */
-  CMD_USE_UNAIMED,
-  /* use a any useable item */
-  CMD_USE_ANY,
+	/* use a rod, wand, or fire ammo */
+	CMD_USE_AIMED,
+	/* use a staff, scroll, potion, or food */
+	CMD_USE_UNAIMED,
+	/* use a any useable item */
+	CMD_USE_ANY,
+	/* use the default action of the terrain the player is standing on */
+	CMD_USE_TERRAIN,
 
 	/* Hors categorie Commands */
 	CMD_SUICIDE,

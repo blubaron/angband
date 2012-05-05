@@ -94,6 +94,7 @@ static struct cmd_info cmd_action[] =
 	{ "Fire at nearest target", { 'h', KC_TAB }, CMD_NULL, textui_cmd_fire_at_nearest },
 	{ "Throw an item", { 'v' }, CMD_THROW, textui_cmd_throw },
 	{ "Walk into a trap", { 'W', '-' }, CMD_JUMP, NULL },
+	{ "Use Terrain", { 'x' }, CMD_USE_TERRAIN, NULL },
 };
 
 /* Item management commands */

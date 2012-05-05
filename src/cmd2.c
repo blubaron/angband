@@ -1810,6 +1810,30 @@ void do_cmd_spike(cmd_code code, cmd_arg args[])
 	}
 }
 
+/*
+ * Do the default action for the terrain the player is standing on
+ */
+void do_cmd_use_terrain(cmd_code code, cmd_arg args[])
+{
+	int feat = cave->feat[p_ptr->py][p_ptr->px];
+
+	/* disarm a trap */
+	if (cave_isknowntrap(cave, p_ptr->py, p_ptr->px)) {
+		cmd_insert(CMD_DISARM);
+		cmd_set_arg_direction(cmd_get_top(), 0, 5);
+	} else
+	/* go down stairs */
+	if (feat == FEAT_MORE) {
+		cmd_insert(CMD_GO_DOWN);
+	} else
+	/* go up stairs */
+	if (feat == FEAT_LESS) {
+		cmd_insert(CMD_GO_UP);
+	} else
+	{
+		msg("I do not see anything to do here.");
+	}
+}
 
 /*
  * Determine if a given grid may be "walked"
