@@ -62,7 +62,7 @@ static struct cmd_info cmd_item[] =
 	{ "Examine an item", 'I', CMD_NULL, textui_obj_examine },
 	{ "Drop an item", 'd', CMD_DROP, NULL, NULL },
 	{ "Fire your missile weapon", 'f', CMD_FIRE, NULL, player_can_fire_msg },
-	{ "Use a staff", 'u', CMD_USE_STAFF, NULL, NULL },
+	{ "Use a staff", 'U', CMD_USE_STAFF, NULL, NULL },
 	{ "Aim a wand", 'a', CMD_USE_WAND, NULL, NULL },
 	{ "Zap a rod", 'z', CMD_USE_ROD, NULL, NULL },
 	{ "Activate an object", 'A', CMD_ACTIVATE, NULL, NULL },
@@ -70,7 +70,7 @@ static struct cmd_info cmd_item[] =
 	{ "Quaff a potion", 'q', CMD_QUAFF, NULL, NULL },
 	{ "Read a scroll", 'r', CMD_READ_SCROLL, NULL, player_can_read_msg },
 	{ "Fuel your light source", 'F', CMD_REFILL, NULL, player_can_refuel_msg },
-	{ "Use an item", 'U', CMD_USE_ANY, NULL, NULL }
+	{ "Use an item", 'u', CMD_USE_ANY, NULL, NULL }
 };
 
 /* General actions */
