@@ -91,6 +91,8 @@ typedef enum cmd_code
 	CMD_USE_ANY,
 	/* use the default action of the terrain the player is standing on */
 	CMD_USE_TERRAIN,
+	/* show possible actions for terrain adjacent to or under the player */
+	CMD_TERRAIN_INFO,
 
 	/* Hors categorie Commands */
 	CMD_SUICIDE,

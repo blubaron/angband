@@ -95,6 +95,7 @@ static struct cmd_info cmd_action[] =
 	{ "Throw an item", { 'v' }, CMD_THROW, textui_cmd_throw },
 	{ "Walk into a trap", { 'W', '-' }, CMD_JUMP, NULL },
 	{ "Use Terrain", { 'x' }, CMD_USE_TERRAIN, NULL },
+	{ "Get terrain info", { 'Z' }, CMD_TERRAIN_INFO, NULL },
 };
 
 /* Item management commands */

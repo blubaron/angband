@@ -1835,6 +1835,32 @@ void do_cmd_use_terrain(cmd_code code, cmd_arg args[])
 	}
 }
 
+int context_menu_cave(struct cave *cave, int y, int x, int adjacent,int mx, int my);
+/*
+ * Show a context menu for a grid adjacent to the player
+ */
+void do_cmd_terrain_info(cmd_code code, cmd_arg args[])
+{
+	int x, y;
+	int dir = args[0].direction;
+
+	if (player_confuse_dir(p_ptr, &dir, TRUE))
+	{
+		return;
+	}
+
+	/* Get location */
+	y = p_ptr->py + ddy[dir];
+	x = p_ptr->px + ddx[dir];
+
+	/* Show the context menu */
+	if (Term->scr->cv) {
+		context_menu_cave(cave, y, x, 1, Term->scr->cx + ddx[dir], Term->scr->cy + ddy[dir]);
+	} else {
+		context_menu_cave(cave, y, x, 1, 40, 1);
+	}
+}
+
 /*
  * Determine if a given grid may be "walked"
  */

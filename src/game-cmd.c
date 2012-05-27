@@ -112,6 +112,7 @@ static const struct command_info game_cmds[] =
 	{ CMD_USE_UNAIMED, "use", { arg_ITEM, arg_TARGET }, do_cmd_use, FALSE, 0 },
 	{ CMD_USE_ANY, "use", { arg_ITEM, arg_TARGET }, do_cmd_use, FALSE, 0 },
 	{ CMD_USE_TERRAIN, "use", { arg_NONE }, do_cmd_use_terrain, FALSE, 0 },
+	{ CMD_TERRAIN_INFO, "look at", { arg_DIRECTION }, do_cmd_terrain_info, FALSE, 0 },
 	{ CMD_SUICIDE, "commit suicide", { arg_NONE }, do_cmd_suicide, FALSE, 0 },
 	{ CMD_SAVE, "save", { arg_NONE }, do_cmd_save_game, FALSE, 0 },
 	{ CMD_QUIT, "quit", { arg_NONE }, do_cmd_quit, FALSE, 0 },
@@ -516,6 +517,7 @@ void process_command(cmd_context ctx, bool no_request)
 			case CMD_BASH:
 			case CMD_ALTER:
 			case CMD_JAM:
+			case CMD_TERRAIN_INFO:
 			{
 			get_dir:
 
