@@ -715,8 +715,12 @@ int context_menu_object(const object_type *o_ptr, const int slot)
 	tb = object_info(o_ptr, OINFO_NONE);
 	object_desc(header, sizeof(header), o_ptr, ODESC_PREFIX | ODESC_FULL);
 
+	area.width = -r.width;
+
 	textui_textblock_place(tb, area, format("%s", header));
 	textblock_free(tb);
+
+	area.width = 0;
 
 	menu_layout(m, &r);
 	region_erase_bordered(&r);
