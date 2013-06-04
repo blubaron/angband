@@ -62,12 +62,14 @@ TESTMAINFILES = main-test.o
 WINMAINFILES = \
         win/angband.res \
         main-win.o \
+	settings.o \
         win/readdib.o \
         win/readpng.o \
         win/scrnshot.o \
 		win/win-layout.o
 
-X11MAINFILES = main-x11.o
+X11MAINFILES = main-x11.o \
+	settings.o \
 
 ANGFILES = \
 	attack.o \
