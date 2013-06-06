@@ -720,7 +720,7 @@ struct ang_dir
 	char *first_file;
 };
 
-ang_dir *my_dopen(const char *dirname)
+ang_dir *dir_open(const char *dirname)
 {
 	WIN32_FIND_DATA fd;
 	HANDLE h;
@@ -742,7 +742,7 @@ ang_dir *my_dopen(const char *dirname)
 	return dir;
 }
 
-bool my_dread(ang_dir *dir, char *fname, size_t len)
+bool dir_read(ang_dir *dir, char *fname, size_t len)
 {
 	WIN32_FIND_DATA fd;
 	BOOL ok;
@@ -780,7 +780,7 @@ bool my_dread(ang_dir *dir, char *fname, size_t len)
 	return TRUE;
 }
 
-void my_dclose(ang_dir *dir)
+void dir_close(ang_dir *dir)
 {
 	/* Close directory */
 	if (dir->h)
@@ -802,7 +802,7 @@ struct ang_dir
 	char *dirname;
 };
 
-ang_dir *my_dopen(const char *dirname)
+ang_dir *dir_open(const char *dirname)
 {
 	ang_dir *dir;
 	DIR *d;
@@ -827,7 +827,7 @@ ang_dir *my_dopen(const char *dirname)
 	return dir;
 }
 
-bool my_dread(ang_dir *dir, char *fname, size_t len)
+bool dir_read(ang_dir *dir, char *fname, size_t len)
 {
 	struct dirent *entry;
 	struct stat filedata;
@@ -861,7 +861,7 @@ bool my_dread(ang_dir *dir, char *fname, size_t len)
 	return TRUE;
 }
 
-void my_dclose(ang_dir *dir)
+void dir_close(ang_dir *dir)
 {
 	/* Close directory */
 	if (dir->d)

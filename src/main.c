@@ -247,7 +247,7 @@ static void user_name(char *buf, size_t len, int id)
 static void list_saves(void)
 {
 	char fname[256];
-	ang_dir *d = my_dopen(ANGBAND_DIR_SAVE);
+	ang_dir *d = dir_open(ANGBAND_DIR_SAVE);
 
 #ifdef SETGID
 	char uid[10];
@@ -258,7 +258,7 @@ static void list_saves(void)
 
 	printf("Savefiles you can use are:\n");
 
-	while (my_dread(d, fname, sizeof fname)) {
+	while (dir_read(d, fname, sizeof fname)) {
 		char path[1024];
 		const char *desc;
 
@@ -277,7 +277,7 @@ static void list_saves(void)
 			printf(" %-15s\n", fname);
 	}
 
-	my_dclose(d);
+	dir_close(d);
 
 	printf("\nUse angband -u<name> to use savefile <name>.\n");
 }
@@ -294,12 +294,12 @@ static void transition_savefile_names(void)
 	char fname[256];
 	char uid[10];
 
-	ang_dir *d = my_dopen(ANGBAND_DIR_SAVE);
+	ang_dir *d = dir_open(ANGBAND_DIR_SAVE);
 	if (!d) return;
 
 	strnfmt(uid, sizeof(uid), "%d.", player_uid);
 
-	while (my_dread(d, fname, sizeof fname)) {
+	while (dir_read(d, fname, sizeof fname)) {
 		char *newname = fname+strlen(uid);
 		char oldpath[1024];
 		char newpath[1024];
@@ -320,7 +320,7 @@ static void transition_savefile_names(void)
 		file_move(oldpath, newpath);
 	}
 
-	my_dclose(d);
+	dir_close(d);
 }
 
 #endif /* SETGID */

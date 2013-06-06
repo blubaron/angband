@@ -244,7 +244,7 @@ typedef struct ang_dir ang_dir;
  *
  * Returns a valid directory handle on success, NULL otherwise.
  */
-ang_dir *my_dopen(const char *dirname);
+ang_dir *dir_open(const char *dirname);
 
 /**
  * Reads a directory entry.
@@ -255,11 +255,11 @@ ang_dir *my_dopen(const char *dirname);
  * Returns TRUE on successful reading, FALSE otherwise.
  * (FALSE generally indicates that there are no more files to be read.)
  */
-bool my_dread(ang_dir *dir, char *fname, size_t len);
+bool dir_read(ang_dir *dir, char *fname, size_t len);
 
 /**
  * Close a directory handle.
  */
-void my_dclose(ang_dir *dir);
+void dir_close(ang_dir *dir);
 
 #endif /* INCLUDED_Z_FILE_H */

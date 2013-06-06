@@ -3698,11 +3698,11 @@ static void init_paths(void)
 	/** Scan for fonts **/
 
 	/* Open the directory */
-	dir = my_dopen(ANGBAND_DIR_XTRA_FONT);
+	dir = dir_open(ANGBAND_DIR_XTRA_FONT);
 	if (!dir) return;
 
 	/* Read every font to the limit */
-	while (my_dread(dir, buf, sizeof buf)) {
+	while (dir_read(dir, buf, sizeof buf)) {
 		/* Check for file extension */
 		if (suffix(buf, ".fon"))
 			FontList[num_fonts++] = string_make(buf);
@@ -3713,7 +3713,7 @@ static void init_paths(void)
 
 	sort(FontList, num_fonts, sizeof(FontList[0]), cmp_font);
 	/* Done */
-	my_dclose(dir);
+	dir_close(dir);
 }
 
 
