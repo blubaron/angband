@@ -648,8 +648,8 @@ static void cleanup_r(void)
 			mem_free(f);
 			f = fn;
 		}
-		while (fb) {
 		fb = r->friends_base;
+		while (fb) {
 			fbn = fb->next;
 			mem_free(fb);
 			fb = fbn;
