@@ -143,7 +143,7 @@ int coords_to_dir(int y, int x);
 
 /* dungeon.c */
 extern void dungeon_change_level(int dlev);
-extern void play_game(void);
+extern void play_game(bool new_game);
 extern int value_check_aux1(const object_type *o_ptr);
 extern void idle_update(void);
 

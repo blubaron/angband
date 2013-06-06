@@ -2939,36 +2939,7 @@ bool init_angband(void)
 	/* Sneakily init command list */
 	cmd_init();
 
-#ifdef ALLOW_BORG /* apw */
-	/* Allow the screensaver to do its work  */
-	if (screensaver)
-	{
-		event_signal(EVENT_LEAVE_INIT);
-		return !file_exists(savefile);
-	}
-#endif /* ALLOW_BORG */
-
-	/* Ask for a "command" until we get one we like. */
-	while (1)
-	{
-		game_command *command_req;
-		int failed = cmd_get(CMD_INIT, &command_req, TRUE);
-
-		if (failed)
-			continue;
-		else if (command_req->command == CMD_QUIT)
-			quit(NULL);
-		else if (command_req->command == CMD_NEWGAME)
-		{
-			event_signal(EVENT_LEAVE_INIT);
-			return TRUE;
-		}
-		else if (command_req->command == CMD_LOADFILE)
-		{
-			event_signal(EVENT_LEAVE_INIT);
-			return FALSE;
-		}
-	}
+	return TRUE;
 }
 
 void cleanup_angband(void)

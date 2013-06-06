@@ -81,6 +81,7 @@
 #include "angband.h"
 #include "buildid.h"
 #include "cmds.h"
+#include "game-event.h"
 #include "cave.h"
 #include "init.h"
 #include "files.h"
@@ -5563,8 +5564,61 @@ int FAR PASCAL WinMain(HINSTANCE hInst, HINSTANCE hPrevInst,
 
 	initialized = TRUE;
 
-	/* Play the game */
-	play_game();
+	/* Initialize */
+	init_angband();
+
+	/* Ask for a "command" until we get one we like. */
+	while (1)
+	{
+		game_command *command_req;
+		int failed = 0;
+#ifdef ALLOW_BORG /* apw */
+		/* Allow the screensaver to do its work  */
+		if (screensaver)
+		{
+			event_signal(EVENT_LEAVE_INIT);
+			new_game = file_exists(savefile);
+			start_game = TRUE;
+		}
+#endif /* ALLOW_BORG */
+
+		if (start_game) 
+		{
+			/* Wait for response */
+			pause_line(Term);
+		}
+		else
+		{
+			failed = cmd_get(CMD_INIT, &command_req, TRUE);
+			if (failed)
+				continue;
+			else if (command_req->command == CMD_QUIT)
+				break;
+			else if (command_req->command == CMD_NEWGAME)
+			{
+				event_signal(EVENT_LEAVE_INIT);
+				new_game = TRUE;
+				start_game = TRUE;
+			}
+			else if (command_req->command == CMD_LOADFILE)
+			{
+				event_signal(EVENT_LEAVE_INIT);
+				new_game = FALSE;
+				start_game = TRUE;
+			}
+
+		}
+		if (start_game) {
+			/* Play the game */
+			play_game(new_game);
+
+			start_game = FALSE;
+			/* quit until proper memory is reinitialized */
+			cleanup_angband();
+			quit(NULL);
+			return (0);
+		}
+	}
 
 	/* Paranoia */
 	quit(NULL);

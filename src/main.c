@@ -19,6 +19,7 @@
 #include "angband.h"
 #include "files.h"
 #include "init.h"
+#include "game-event.h"
 #include "savefile.h"
 
 /* locale junk */
@@ -328,6 +329,7 @@ static void transition_savefile_names(void)
 
 
 static bool new_game;
+static bool start_game;
 
 /*
  * Pass the appropriate "Initialisation screen" command to the game,
@@ -335,15 +337,34 @@ static bool new_game;
  */
 static errr get_init_cmd(void)
 {
-	/* Wait for response */
-	pause_line(Term);
+	ui_event in;
 
-	if (new_game)
-		cmd_insert(CMD_NEWGAME);
-	else
-		/* This might be modified to supply the filename in future. */
-		cmd_insert(CMD_LOADFILE);
+	/* Prompt the user */
+	prt("[Choose 'Start a (N)ew game', '(O)pen a saved game', or 'e(X)it the game]", 23, 3);
+	Term_fresh();
 
+	while (1)
+	{
+		/* Wait for response */
+		Term_inkey(&in, TRUE, TRUE);
+
+		if (in.type == EVT_KBRD)
+		{
+			if ((in.key.code == 'n') || (in.key.code == 'N')) { 
+				cmd_insert(CMD_NEWGAME);
+				break;
+			} else
+			if ((in.key.code == 'o') || (in.key.code == 'O')) { 
+				/* This might be modified to supply the filename in future. */
+				cmd_insert(CMD_LOADFILE);
+				break;
+			} else
+			if ((in.key.code == 'x') || (in.key.code == 'X')) { 
+				cmd_insert(CMD_QUIT);
+				break;
+			}
+		}
+	}
 	/* Everything's OK. */
 	return 0;
 }
@@ -436,6 +457,7 @@ int main(int argc, char *argv[])
 
 			case 'n':
 				new_game = TRUE;
+				start_game = TRUE;
 				break;
 
 			case 'w':
@@ -471,6 +493,7 @@ int main(int argc, char *argv[])
 #else
 				savefile_set_name(arg);
 #endif /* SETGID */
+				start_game = TRUE;
 
 				continue;
 			}
@@ -608,8 +631,61 @@ int main(int argc, char *argv[])
 	/* Set up the display handlers and things. */
 	init_display();
 
-	/* Play the game */
-	play_game();
+	/* Initialize */
+	init_angband();
+
+	/* Ask for a "command" until we get one we like. */
+	while (1)
+	{
+		game_command *command_req;
+		int failed = 0;
+#ifdef ALLOW_BORG /* apw */
+		/* Allow the screensaver to do its work  */
+		if (screensaver)
+		{
+			event_signal(EVENT_LEAVE_INIT);
+			new_game = file_exists(savefile);
+			start_game = TRUE;
+		}
+#endif /* ALLOW_BORG */
+
+		if (start_game) 
+		{
+			/* Wait for response */
+			pause_line(Term);
+		}
+		else
+		{
+			failed = cmd_get(CMD_INIT, &command_req, TRUE);
+			if (failed)
+				continue;
+			else if (command_req->command == CMD_QUIT)
+				break;
+			else if (command_req->command == CMD_NEWGAME)
+			{
+				event_signal(EVENT_LEAVE_INIT);
+				new_game = TRUE;
+				start_game = TRUE;
+			}
+			else if (command_req->command == CMD_LOADFILE)
+			{
+				event_signal(EVENT_LEAVE_INIT);
+				new_game = FALSE;
+				start_game = TRUE;
+			}
+
+		}
+		if (start_game) {
+			/* Play the game */
+			play_game(new_game);
+
+			start_game = FALSE;
+			/* quit until proper memory is reinitialized */
+			cleanup_angband();
+			quit(NULL);
+			return (0);
+		}
+	}
 
 	/* Free resources */
 	cleanup_angband();
