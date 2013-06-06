@@ -113,7 +113,7 @@ int ini_settings_load(const char *filename, ini_settings **ret)
 	}
 
 	sec = NULL;
-	while (0 <= file_getl(fp, buf, 1024)) {
+	while (file_getl(fp, buf, 1024)) {
 		/* Count lines */
 		line++;
 
