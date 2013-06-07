@@ -669,9 +669,23 @@ int main(int argc, char *argv[])
 			}
 			else if (command_req->command == CMD_LOADFILE)
 			{
-				event_signal(EVENT_LEAVE_INIT);
-				new_game = FALSE;
-				start_game = TRUE;
+				char file[96];
+#if defined(SETGID)
+				char plr_uid[32];
+				strnfmt(plr_uid, 32, "%u", player_uid);
+				if (file_pick(file, 96, "Pick save file", ANGBAND_DIR_SAVE,
+				              NULL, NULL, NULL, plr_uid) >= 0)
+#else /* SETGID */
+				if (file_pick(file, 96, "Pick save file", ANGBAND_DIR_SAVE,
+				              NULL, NULL, NULL, NULL) >= 0)
+#endif /* SETGID */
+				{
+					savefile_set_name(file);
+	
+					event_signal(EVENT_LEAVE_INIT);
+					new_game = FALSE;
+					start_game = TRUE;
+				}
 			}
 
 		}

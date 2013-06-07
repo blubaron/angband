@@ -47,7 +47,8 @@ ZFILES = z-bitflag.o z-file.o z-form.o z-msg.o z-quark.o z-queue.o z-rand.o \
 
 # MAINFILES is defined by autotools (or manually) to be combinations of these
 
-BASEMAINFILES = main.o
+BASEMAINFILES = main.o \
+	pickfile.o
 
 GCUMAINFILES = main-gcu.o
 
