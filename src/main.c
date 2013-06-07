@@ -22,7 +22,6 @@
 #include "game-event.h"
 #include "savefile.h"
 #include "pickfile.h"
-#include "randname.h"
 
 /* locale junk */
 #include "locale.h"
@@ -672,18 +671,11 @@ int main(int argc, char *argv[])
 				break;
 			else if (command_req->command == CMD_NEWGAME)
 			{
-#ifdef UNIX
-
 				/* Get a random name as a default player name, unless set with -u switch */
 				if (!op_ptr->full_name[0]) {
-					Rand_value = time(NULL);
-					randname_make(RANDNAME_TOLKIEN, 4, 8, op_ptr->full_name, sizeof(op_ptr->full_name), name_sections);
-					my_strcap(op_ptr->full_name);
-					/* Set the savefile to load */
-					savefile_set_name(player_safe_name(p_ptr));
+					op_ptr->full_name[0] = '*';
+					op_ptr->full_name[1] = '\0';
 				}
-
-#endif /* UNIX */
 
 				event_signal(EVENT_LEAVE_INIT);
 				new_game = TRUE;

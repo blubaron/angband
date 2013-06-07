@@ -1627,6 +1627,11 @@ bool get_name(char *buf, size_t buflen)
 	/* Save the player name */
 	my_strcpy(buf, op_ptr->full_name, buflen);
 
+	/* see if we need to start with a random name */
+	if (buf[0] == '*') {
+		Term_keypress('*',0);
+	}
+
 	/* Ask the user for a string */
 	res = askfor_aux(buf, buflen, get_name_keypress);
 
