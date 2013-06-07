@@ -17,6 +17,7 @@
  */
 #include "angband.h"
 #include "buildid.h"
+#include "settings.h"
 
 /*
  * This file helps Angband work with UNIX/X11 computers.
@@ -110,7 +111,7 @@
 #include <X11/XKBlib.h>
 
 #include "main.h"
-
+int default_layout_x11(){return 0;}
 #ifndef IsModifierKey
 
 /*
@@ -236,6 +237,9 @@ struct metadpy
 	unsigned int height;
 	unsigned int depth;
 
+	int wmbdr_x;
+	int wmbdr_y;
+
 	Pixell black;
 	Pixell white;
 
@@ -285,7 +289,6 @@ struct infowin
 	s16b ox, oy;
 
 	s16b x, y;
-	s16b x_save, y_save;
 	s16b w, h;
 	u16b b;
 
@@ -386,12 +389,23 @@ struct term_data
 	infowin *win;
 
 	int tile_wid;
-	int tile_wid2; /* Tile-width with bigscreen */
 	int tile_hgt;
 
 	/* Pointers to allocated data, needed to clear up memory */
 	XClassHint *classh;
 	XSizeHints *sizeh;
+
+	/* info loaded from pref file */
+	int rows;
+	int cols;
+	int pos_x;
+	int pos_y;
+	int bdr_x;
+	int bdr_y;
+
+	bool visible;
+
+	char *font_want;
 };
 
 
@@ -801,8 +815,6 @@ static errr Infowin_prepare(Window xid)
 	/* Apply the above info */
 	iwin->x = x;
 	iwin->y = y;
-	iwin->x_save = x;
-	iwin->y_save = y;
 	iwin->w = w;
 	iwin->h = h;
 	iwin->b = b;
@@ -1577,7 +1589,7 @@ static term_data data[MAX_TERM_DATA];
 /*
  * Path to the X11 settings file
  */
-static const char *x11_prefs = "x11-settings.prf";
+/*static const char *x11-settings = "x11-settings.txt";*/
 static char settings[1024];
 
 
@@ -1851,21 +1863,37 @@ static errr CheckEvent(bool wait)
 		/* Move and/or Resize */
 		case ConfigureNotify:
 		{
-                        int cols, rows, wid, hgt, force_resize;
+			int cols, rows, wid, hgt, force_resize;
 
 			int ox = Infowin->ox;
 			int oy = Infowin->oy;
-
+			
 			/* Save the new Window Parms */
 			Infowin->x = xev->xconfigure.x;
 			Infowin->y = xev->xconfigure.y;
-			Infowin->w = xev->xconfigure.width;
-			Infowin->h = xev->xconfigure.height;
 
+			/* Hack - store the values of the first configure which
+			 * should be the window border width and window title bar
+			 * height  */
+			if ((Metadpy->wmbdr_x == 0) && xev->xconfigure.x) {
+				Metadpy->wmbdr_x = xev->xconfigure.x;
+				Metadpy->wmbdr_y = xev->xconfigure.y;
+			}
+
+			if ((Infowin->w != xev->xconfigure.width) ||
+				(Infowin->h != xev->xconfigure.height))
+			{
+				Infowin->w = xev->xconfigure.width;
+				Infowin->h = xev->xconfigure.height;
+							
+				/* We need to notice the resize of this window (later) */
+				Infowin->resize = TRUE;
+			}
+			
 			/* Determine "proper" number of rows/cols */
 			cols = ((Infowin->w - (ox + ox)) / td->tile_wid);
 			rows = ((Infowin->h - (oy + oy)) / td->tile_hgt);
-
+			
 			/* Hack -- minimal size */
 			if (cols < 1) cols = 1;
 			if (rows < 1) rows = 1;
@@ -1879,15 +1907,15 @@ static errr CheckEvent(bool wait)
 
                                 /* Resize the windows if any "change" is needed */
                                 if (force_resize)
-                                  {
-			/* Desired size of window */
-			wid = cols * td->tile_wid + (ox + ox);
-			hgt = rows * td->tile_hgt + (oy + oy);
+                                {
+					/* Desired size of window */
+					wid = cols * td->tile_wid + (ox + ox);
+					hgt = rows * td->tile_hgt + (oy + oy);
 
-				/* Resize window */
-				Infowin_set(td->win);
-				Infowin_resize(wid, hgt);
-			}
+					/* Resize window */
+					Infowin_set(td->win);
+					Infowin_resize(wid, hgt);
+				}
 			}
 
 			/* Resize the Term (if needed) */
@@ -2045,7 +2073,7 @@ static errr Term_bigcurs_x11(int x, int y)
 	XDrawRectangle(Metadpy->dpy, Infowin->win, xor->gc,
 		       x * td->tile_wid + Infowin->ox,
 		       y * td->tile_hgt + Infowin->oy,
-		       td->tile_wid2 - 1, td->tile_hgt - 1);
+		       td->tile_wid * tile_width - 1, td->tile_hgt * tile_height - 1);
 
 	/* Success */
 	return (0);
@@ -2083,79 +2111,322 @@ static errr Term_text_x11(int x, int y, int n, int a, const wchar_t *s)
 	return (0);
 }
 
-
-
-
-static void save_prefs(void)
+/*
+ * simple pick of width and height from the front of the
+ * string (filename, not filepath)
+ */
+static char* analyze_file(char*filename, int *wid, int *hgt)
 {
-	ang_file *fff;
+	int w,h;
+	char *end;
+	w = strtol(filename, &end, 10);
+	h = strtol(end+1, NULL, 10);
+	if (wid) *wid = w;
+	if (hgt) *hgt = h;
+
+	return filename;
+}
+
+/*
+ * Write the "prefs" for a single term
+ */
+static void save_prefs_aux(term_data *td, ini_settings *ini, const char *sec_name)
+{
+	char buf[256];
+
+	/* Paranoia */
+	if (!td->win) {
+		/* Visible */
+		ini_setting_set_string(ini, sec_name, "Visible", "0", 2);
+		return;
+	}
+
+	/* Visible */
+	strncpy(buf, td->visible ? "1" : "0", 256);
+	ini_setting_set_string(ini, sec_name, "Visible", buf, 256);
+
+	/* Font */
+	if(td->fnt && td->fnt->name) {
+		strncpy(buf, td->fnt->name, 256);
+	} else {
+		strncpy(buf, DEFAULT_X11_FONT, 256);
+	}
+	ini_setting_set_string(ini, sec_name, "Font", buf, 256);
+
+	/* Tile size (x) */
+	strnfmt(buf, 256, "%d", td->tile_wid);
+	ini_setting_set_string(ini, sec_name, "TileWid", buf, 256);
+
+	/* Tile size (y) */
+	strnfmt(buf, 256, "%d", td->tile_hgt);
+	ini_setting_set_string(ini, sec_name, "TileHgt", buf, 256);
+
+	/* Window size (x) */
+	strnfmt(buf, 256, "%d", td->t.wid);
+	ini_setting_set_string(ini, sec_name, "NumCols", buf, 256);
+
+	/* Window size (y) */
+	strnfmt(buf, 256, "%d", td->t.hgt);
+	ini_setting_set_string(ini, sec_name, "NumRows", buf, 256);
+
+	/* Window position (x) */
+	strnfmt(buf, 256, "%d", td->win->x - Metadpy->wmbdr_x);
+	ini_setting_set_string(ini, sec_name, "PositionX", buf, 256);
+
+	/* Window position (y) */
+	if (td->win->y == 2*Metadpy->wmbdr_y) {
+		/* HACK - special case what usually happens when the initial
+		 * y pos is 0 ( or <Metadpy->wmbdr_y) */
+		buf[0] = '0';
+		buf[1] = '\0';
+	} else {
+		strnfmt(buf, 256, "%d", td->win->y - Metadpy->wmbdr_y);
+	}
+	ini_setting_set_string(ini, sec_name, "PositionY", buf, 256);
+
+	/* Border position (x) */
+	strnfmt(buf, 256, "%d", td->win->ox);
+	ini_setting_set_string(ini, sec_name, "BorderX", buf, 256);
+
+	/* Border position (y) */
+	strnfmt(buf, 256, "%d", td->win->oy);
+	ini_setting_set_string(ini, sec_name, "BorderY", buf, 256);
+
+}
+
+
+/*
+ * Write the "prefs"
+ *
+ * We assume that the windows have all been initialized
+ */
+static bool save_prefs(const char *ini_file)
+{
 	int i;
+	ini_settings *ini = NULL;
+	char buf[128];
 
-	/* Open the settings file */
-	fff = file_open(settings, MODE_WRITE, FTYPE_TEXT);
-	if (!fff) return;
+	if (ini_settings_new(&ini) < 0)
+		return FALSE;
 
-	/* Header */
-	file_putf(fff, "# %s X11 settings\n\n", VERSION_NAME);
+	/* Save the "arg_graphics" flag */
+	strnfmt(buf, 128, "%d", arg_graphics);
+	ini_setting_set_string(ini, "Angband", "Graphics", buf, 128);
 
-	/* Number of term windows to open */
-	file_putf(fff, "TERM_WINS=%d\n\n", term_windows_open);
+	/* Save the "arg_graphics_nice" flag */
+	strnfmt(buf, 128, "%d", arg_graphics_nice);
+	ini_setting_set_string(ini, "Angband", "Graphics_Nice", buf, 128);
 
+	/* Save the tile width */
+	strnfmt(buf, 128, "%d", tile_width);
+	ini_setting_set_string(ini, "Angband", "TileWidth", buf, 128);
+
+	/* Save the tile height */
+	strnfmt(buf, 128, "%d", tile_height);
+	ini_setting_set_string(ini, "Angband", "TileHeight", buf, 128);
+
+	/* some optional flags */
+	strnfmt(buf, 128, "%d", arg_wizard ? 1 : 0);
+	ini_setting_set_string_def(ini, "Angband", "Wizard", buf, 128, "0");
+
+	strnfmt(buf, 128, "%d", arg_rebalance ? 1 : 0);
+	ini_setting_set_string_def(ini, "Angband", "Rebalance", buf, 128, "0");
+#if 0
+#ifdef SUPPORT_GAMMA
+	if (gamma_correction > 0) {
+		strnfmt(buf, 128, "%d", gamma_correction);
+		ini_setting_set_string(ini, "Angband", "Gamma", buf, 128);
+	}
+#endif /* SUPPORT_GAMMA */
+#endif
 	/* Save window prefs */
 	for (i = 0; i < MAX_TERM_DATA; i++)
 	{
 		term_data *td = &data[i];
 
-		if (!td->t.mapped_flag) continue;
+		strnfmt(buf, 128, "Term-%d", i);
 
-		/* Header */
-		file_putf(fff, "# Term %d\n", i);
-
-		/*
-		 * This doesn't seem to work under various WMs
-		 * since the decoration messes the position up
-		 *
-		 * Hack -- Use saved window positions.
-		 * This means that we won't remember ingame repositioned
-		 * windows, but also means that WMs won't screw predefined
-		 * positions up. -CJN-
-		 */
-
-		/* Window specific location (x) */
-		file_putf(fff, "AT_X_%d=%d\n", i, td->win->x_save);
-
-		/* Window specific location (y) */
-		file_putf(fff, "AT_Y_%d=%d\n", i, td->win->y_save);
-
-		/* Window specific cols */
-		file_putf(fff, "COLS_%d=%d\n", i, td->t.wid);
-
-		/* Window specific rows */
-		file_putf(fff, "ROWS_%d=%d\n", i, td->t.hgt);
-
-		/* Window specific inner border offset (ox) */
-		file_putf(fff, "IBOX_%d=%d\n", i, td->win->ox);
-
-		/* Window specific inner border offset (oy) */
-		file_putf(fff, "IBOY_%d=%d\n", i, td->win->oy);
-
-		/* Window specific font name */
-		file_putf(fff, "FONT_%d=%s\n", i, td->fnt->name);
-
-		/* Window specific tile width */
-		file_putf(fff, "TILE_WIDTH_%d=%d\n", i, td->tile_wid);
-
-		/* Window specific tile height */
-		file_putf(fff, "TILE_HEIGHT_%d=%d\n", i, td->tile_hgt);
-
-		/* Footer */
-		file_putf(fff, "\n");
+		save_prefs_aux(td, ini, buf);
 	}
 
-	/* Close */
-	file_close(fff);
+	/* actually write the file */
+	ini_settings_save(ini_file, ini);
+
+	/* cleanup the ini memory */
+	ini_settings_close(&ini);
+
+	/* Success */
+	return TRUE;
 }
 
+
+/*
+ * Load the "prefs" for a single term
+ */
+static void load_prefs_aux(term_data *td, ini_settings *ini, const char *sec_name)
+{
+	char tmp[256];
+
+	int wid, hgt;
+
+	/* Visible */
+	td->visible = (ini_setting_get_uint32(ini, sec_name, "Visible", td->visible) != 0);
+
+	/* Desired font, with default */
+	ini_setting_get_string(ini, sec_name, "Font", tmp, 255, td->font_want);
+
+	/* Analyze font, save desired font name */
+	if (td->font_want) string_free(td->font_want);
+	td->font_want = string_make(analyze_file(tmp, &wid, &hgt));
+
+	/* Tile size */
+	td->tile_wid = ini_setting_get_uint32(ini, sec_name, "TileWid", wid);
+	td->tile_hgt = ini_setting_get_uint32(ini, sec_name, "TileHgt", hgt);
+
+	/* Window size */
+	td->cols = ini_setting_get_uint32(ini, sec_name, "NumCols", td->cols);
+	td->rows = ini_setting_get_uint32(ini, sec_name, "NumRows", td->rows);
+
+	/* Window position */
+	td->pos_x = ini_setting_get_uint32(ini, sec_name, "PositionX", td->pos_x);
+	td->pos_y = ini_setting_get_uint32(ini, sec_name, "PositionY", td->pos_y);
+
+	/* Border size */
+	td->bdr_x = ini_setting_get_uint32(ini, sec_name, "BorderX", td->bdr_x);
+	td->bdr_y = ini_setting_get_uint32(ini, sec_name, "BorderY", td->bdr_y);
+}
+
+
+/*
+ * Load the "prefs"
+ */
+static bool load_prefs(const char *ini_file)
+{
+	int i;
+
+	char buf[256];
+	bool first_start;
+	ini_settings *ini = NULL;
+
+	i = ini_settings_load(ini_file, &ini);
+	first_start = FALSE;
+	if (i<0) {
+		if (i == -4) {
+			first_start = TRUE;
+		} else {
+			return FALSE;
+		}
+	}
+
+	/* Extract the "arg_graphics" flag */
+	arg_graphics = ini_setting_get_uint32(ini, "Angband", "Graphics", arg_graphics);
+	
+	/* Extract the "arg_graphics" flag */
+	arg_graphics_nice = ini_setting_get_uint32(ini, "Angband", "Graphics_Nice", arg_graphics_nice);
+	
+	/* Extract the tile width */
+	tile_width = ini_setting_get_uint32(ini, "Angband", "TileWidth", 1);
+
+	/* Extract the tile height */
+	tile_height = ini_setting_get_uint32(ini, "Angband", "TileHeight", 1);
+
+	/* Extract the "arg_wizard" flag */
+	arg_wizard = (ini_setting_get_uint32(ini, "Angband", "Wizard", arg_wizard) != 0);
+
+	/* Extract the "arg_rebalance" flag */
+	arg_rebalance = (ini_setting_get_uint32(ini, "Angband", "Rebalance", 0) != 0);
+
+#if 0
+#ifdef SUPPORT_GAMMA
+
+	/* Extract the gamma correction */
+	gamma_correction = ini_setting_get_uint32(ini, "Angband", "Gamma", 0);
+
+#endif /* SUPPORT_GAMMA */
+#endif
+	/* Load window prefs */
+	for (i = 0; i < MAX_TERM_DATA; i++)
+	{
+		term_data *td = &data[i];
+
+		strnfmt(buf, 256, "Term-%d", i);
+
+		load_prefs_aux(td, ini, buf);
+	}
+
+	/* cleanup the ini memory */
+	ini_settings_close(&ini);
+
+	if (first_start) {
+		default_layout_x11(data, MAX_TERM_DATA, Metadpy);
+	}
+
+	/* Paranoia */
+	if (data[0].cols < 80) data[0].cols = 80;
+	if (data[0].rows < 24) data[0].rows = 24;
+	data[0].visible = 1;
+
+	/* Success */
+	if (first_start) {
+		return FALSE;
+	} else {
+		return TRUE;
+	}
+}
+/*
+ * Check environment variables for a term
+ */
+static void check_envvar_x11(term_data *td, int i)
+{
+	int val;
+	char buf[1024];
+	const char *str;
+
+	/* Window specific location (x) */
+	strnfmt(buf, sizeof(buf), "ANGBAND_X11_AT_X_%d", i);
+	str = getenv(buf);
+	val = (str != NULL) ? atoi(str) : -1;
+	if (val > 0) td->pos_x = val;
+
+	/* Window specific location (y) */
+	strnfmt(buf, sizeof(buf), "ANGBAND_X11_AT_Y_%d", i);
+	str = getenv(buf);
+	val = (str != NULL) ? atoi(str) : -1;
+	if (val > 0) td->pos_y = val;
+
+	/* Window specific cols */
+	strnfmt(buf, sizeof(buf), "ANGBAND_X11_COLS_%d", i);
+	str = getenv(buf);
+	val = (str != NULL) ? atoi(str) : -1;
+	if (val > 0) td->cols = val;
+
+	/* Window specific rows */
+	strnfmt(buf, sizeof(buf), "ANGBAND_X11_ROWS_%d", i);
+	str = getenv(buf);
+	val = (str != NULL) ? atoi(str) : -1;
+	if (val > 0) td->rows = val;
+
+	/* Window specific inner border offset (ox) */
+	strnfmt(buf, sizeof(buf), "ANGBAND_X11_IBOX_%d", i);
+	str = getenv(buf);
+	val = (str != NULL) ? atoi(str) : -1;
+	if (val > 0) td->bdr_x = val;
+
+	/* Window specific inner border offset (oy) */
+	strnfmt(buf, sizeof(buf), "ANGBAND_X11_IBOY_%d", i);
+	str = getenv(buf);
+	val = (str != NULL) ? atoi(str) : -1;
+	if (val > 0) td->bdr_y = val;
+
+	/* Window specific font name */
+	strnfmt(buf, sizeof(buf), "ANGBAND_X11_FONT_%d", i);
+	str = getenv(buf);
+	if (str) 
+	{
+		if (td->font_want) string_free(td->font_want);
+		td->font_want = string_make(str);
+	}
+}
 
 /*
  * Initialize a term_data
@@ -2179,10 +2450,6 @@ static errr term_data_init(term_data *td, int i)
 
 	int wid, hgt, num;
 
-	const char *str;
-
-	int val;
-
 	XClassHint *ch;
 
 	char res_name[20];
@@ -2190,187 +2457,21 @@ static errr term_data_init(term_data *td, int i)
 
 	XSizeHints *sh;
 
-	ang_file *fff;
-
-	char buf[1024];
-	char cmd[40];
-	char font_name[256];
-
-	int line = 0;
-
-	/* Get default font for this term */
-	font = get_default_font(i);
-
-	/* Open the file */
-	fff = file_open(settings, MODE_READ, FTYPE_TEXT);
-
-	/* File exists */
-	if (fff)
-	{
-		/* Process the file */
-		while (file_getl(fff, buf, sizeof(buf)))
-		{
-			/* Count lines */
-			line++;
-
-			/* Skip "empty" lines */
-			if (!buf[0]) continue;
-
-			/* Skip "blank" lines */
-			if (isspace((unsigned char)buf[0])) continue;
-
-			/* Skip comments */
-			if (buf[0] == '#') continue;
-
-			/* Window specific location (x) */
-			strnfmt(cmd, sizeof(cmd), "AT_X_%d", i);
-
-			if (prefix(buf, cmd))
-			{
-				str = strstr(buf, "=");
-				x = (str != NULL) ? atoi(str + 1) : -1;
-				continue;
-			}
-
-			/* Window specific location (y) */
-			strnfmt(cmd, sizeof(cmd), "AT_Y_%d", i);
-
-			if (prefix(buf, cmd))
-			{
-				str = strstr(buf, "=");
-				y = (str != NULL) ? atoi(str + 1) : -1;
-				continue;
-			}
-
-			/* Window specific cols */
-			strnfmt(cmd, sizeof(cmd), "COLS_%d", i);
-
-			if (prefix(buf, cmd))
-			{
-				str = strstr(buf, "=");
-				val = (str != NULL) ? atoi(str + 1) : -1;
-				if (val > 0) cols = val;
-				continue;
-			}
-
-			/* Window specific rows */
-			strnfmt(cmd, sizeof(cmd), "ROWS_%d", i);
-
-			if (prefix(buf, cmd))
-			{
-				str = strstr(buf, "=");
-				val = (str != NULL) ? atoi(str + 1) : -1;
-				if (val > 0) rows = val;
-				continue;
-			}
-
-			/* Window specific inner border offset (ox) */
-			strnfmt(cmd, sizeof(cmd), "IBOX_%d", i);
-
-			if (prefix(buf, cmd))
-			{
-				str = strstr(buf, "=");
-				val = (str != NULL) ? atoi(str + 1) : -1;
-				if (val > 0) ox = val;
-				continue;
-			}
-
-			/* Window specific inner border offset (oy) */
-			strnfmt(cmd, sizeof(cmd), "IBOY_%d", i);
-
-			if (prefix(buf, cmd))
-			{
-				str = strstr(buf, "=");
-				val = (str != NULL) ? atoi(str + 1) : -1;
-				if (val > 0) oy = val;
-				continue;
-			}
-
-			/* Window specific font name */
-			strnfmt(cmd, sizeof(cmd), "FONT_%d", i);
-
-			if (prefix(buf, cmd))
-			{
-				str = strstr(buf, "=");
-				if (str != NULL)
-				{
-					my_strcpy(font_name, str + 1, sizeof(font_name));
-					font = font_name;
-				}
-				continue;
-			}
-
-			/* Window specific tile width */
-			strnfmt(cmd, sizeof(cmd), "TILE_WIDTH_%d", i);
-
-			if (prefix(buf, cmd))
-			{
-				str = strstr(buf, "=");
-				val = (str != NULL) ? atoi(str + 1) : -1;
-				if (val > 0) td->tile_wid = val;
-				continue;
-			}
-
-			/* Window specific tile height */
-			strnfmt(cmd, sizeof(cmd), "TILE_HEIGHT_%d", i);
-
-			if (prefix(buf, cmd))
-			{
-				str = strstr(buf, "=");
-				val = (str != NULL) ? atoi(str + 1) : -1;
-				if (val > 0) td->tile_hgt = val;
-				continue;
-			}
-		}
-
-		/* Close */
-		file_close(fff);
+	/* don't do anything if not visible */
+	if (!(td->visible)) {
+		return (0);
 	}
 
-	/*
-	 * Env-vars overwrite the settings in the settings file
-	 */
+	/* Get default font for this term */
+	font = td->font_want;
 
-	/* Window specific location (x) */
-	strnfmt(buf, sizeof(buf), "ANGBAND_X11_AT_X_%d", i);
-	str = getenv(buf);
-	val = (str != NULL) ? atoi(str) : -1;
-	if (val > 0) x = val;
+	x = td->pos_x;
+	y = td->pos_y;
+	ox = td->bdr_x;
+	oy = td->bdr_y;
 
-	/* Window specific location (y) */
-	strnfmt(buf, sizeof(buf), "ANGBAND_X11_AT_Y_%d", i);
-	str = getenv(buf);
-	val = (str != NULL) ? atoi(str) : -1;
-	if (val > 0) y = val;
-
-	/* Window specific cols */
-	strnfmt(buf, sizeof(buf), "ANGBAND_X11_COLS_%d", i);
-	str = getenv(buf);
-	val = (str != NULL) ? atoi(str) : -1;
-	if (val > 0) cols = val;
-
-	/* Window specific rows */
-	strnfmt(buf, sizeof(buf), "ANGBAND_X11_ROWS_%d", i);
-	str = getenv(buf);
-	val = (str != NULL) ? atoi(str) : -1;
-	if (val > 0) rows = val;
-
-	/* Window specific inner border offset (ox) */
-	strnfmt(buf, sizeof(buf), "ANGBAND_X11_IBOX_%d", i);
-	str = getenv(buf);
-	val = (str != NULL) ? atoi(str) : -1;
-	if (val > 0) ox = val;
-
-	/* Window specific inner border offset (oy) */
-	strnfmt(buf, sizeof(buf), "ANGBAND_X11_IBOY_%d", i);
-	str = getenv(buf);
-	val = (str != NULL) ? atoi(str) : -1;
-	if (val > 0) oy = val;
-
-	/* Window specific font name */
-	strnfmt(buf, sizeof(buf), "ANGBAND_X11_FONT_%d", i);
-	str = getenv(buf);
-	if (str) font = str;
+	rows = td->rows;
+	cols = td->cols;
 
 	/* Hack the main window must be at least 80x24 */
 	if (!i)
@@ -2387,9 +2488,6 @@ static errr term_data_init(term_data *td, int i)
 	/* Use proper tile size */
 	if (td->tile_wid <= 0) td->tile_wid = td->fnt->twid;
 	if (td->tile_hgt <= 0) td->tile_hgt = td->fnt->hgt;
-
-	/* Don't allow bigtile mode - one day maybe NRM */
-	td->tile_wid2 = td->tile_wid;
 
 	/* Hack -- key buffer size */
 	num = ((i == 0) ? 1024 : 16);
@@ -2526,32 +2624,40 @@ static void hook_quit(const char *str)
 	/* Unused */
 	(void)str;
 
-	save_prefs();
+	if (settings[0]) {
+		save_prefs(settings);
+	}
 
 	/* Free allocated data */
-	for (i = 0; i < term_windows_open; i++)
+	for (i = 0; i < MAX_TERM_DATA; i++)
 	{
 		term_data *td = &data[i];
 		term *t = &td->t;
 
+		if (td->font_want) string_free(td->font_want);
+
 		/* Free size hints */
-		XFree(td->sizeh);
+		if (td->sizeh) XFree(td->sizeh);
 
 		/* Free class hints */
-		XFree(td->classh);
+		if (td->classh) XFree(td->classh);
 
 		/* Free fonts */
-		Infofnt_set(td->fnt);
-		(void)Infofnt_nuke();
-		FREE(td->fnt);
+		if (td->fnt) {
+			Infofnt_set(td->fnt);
+			(void)Infofnt_nuke();
+			FREE(td->fnt);
+		}
 
 		/* Free window */
-		Infowin_set(td->win);
-		(void)Infowin_nuke();
-		FREE(td->win);
+		if (td->win) {
+			Infowin_set(td->win);
+			(void)Infowin_nuke();
+			FREE(td->win);
+		}
 
 		/* Free term */
-		(void)term_nuke(t);
+		if (t) (void)term_nuke(t);
 	}
 
 	/* Free colors */
@@ -2582,12 +2688,7 @@ errr init_x11(int argc, char **argv)
 
 	int num_term = -1;
 
-	ang_file *fff;
-
-	char buf[1024];
-	const char *str;
-	int val;
-	int line = 0;
+	const char *ini_file = "x11_settings.txt";
 
 	/* Parse args */
 	for (i = 1; i < argc; i++)
@@ -2608,7 +2709,7 @@ errr init_x11(int argc, char **argv)
 
 		if (prefix(argv[i], "-x"))
 		{
-			x11_prefs = argv[i] + 2;
+			ini_file = argv[i] + 2;
 			continue;
 		}
 
@@ -2616,47 +2717,36 @@ errr init_x11(int argc, char **argv)
 	}
 
 
+	/* Initialize default term data */
+	for (i = 0; i < MAX_TERM_DATA; i++) {
+		int wid, hgt;
+		term_data *td = &data[i];
+
+		td->cols = 80;
+		td->rows = 24;
+		td->visible = 0;
+		td->pos_x = i*10;
+		td->pos_y = i*10;
+		td->bdr_x = 0;
+		td->bdr_y = 0;
+		td->font_want = string_make(get_default_font(i));
+		(void)analyze_file(td->font_want, &wid, &hgt);
+		td->tile_wid = wid;
+		td->tile_hgt = hgt;
+
+		if (i < num_term || i == 0) {
+			td->visible = 1;
+		}
+	}
+
 	if (num_term == -1)
 	{
 		num_term = 1;
 
 		/* Build the filename */
-		(void)path_build(settings, sizeof(settings), ANGBAND_DIR_USER, "x11-settings.prf");
+		(void)path_build(settings, sizeof(settings), ANGBAND_DIR_USER, ini_file);
 
-		/* Open the file */
-		fff = file_open(settings, MODE_READ, FTYPE_TEXT);
-
-		/* File exists */
-		if (fff)
-		{
-			/* Process the file */
-			while (file_getl(fff, buf, sizeof(buf)))
-			{
-				/* Count lines */
-				line++;
-	
-				/* Skip "empty" lines */
-				if (!buf[0]) continue;
-	
-				/* Skip "blank" lines */
-				if (isspace((unsigned char)buf[0])) continue;
-	
-				/* Skip comments */
-				if (buf[0] == '#') continue;
-	
-				/* Number of terminal windows */
-				if (prefix(buf, "TERM_WINS"))
-				{
-					str = strstr(buf, "=");
-					val = (str != NULL) ? atoi(str + 1) : -1;
-					if (val > 0) num_term = val;
-					continue;
-				}
-			}
-	
-			/* Close */
-			(void)file_close(fff);
-		}
+		load_prefs(settings);
 	}
 
 
@@ -2741,13 +2831,19 @@ errr init_x11(int argc, char **argv)
 	{
 		term_data *td = &data[i];
 
+		/* Env-vars overwrite the settings in the settings file */
+		check_envvar_x11(td, i);
+
 		/* Initialize the term_data */
 		term_data_init(td, i);
 
 		/* Save global entry */
 		angband_term[i] = Term;
 	}
-
+	for (; i < MAX_TERM_DATA; i++)
+	{
+		data[i].visible = 0;
+	}
 	/* Raise the "Angband" window */
 	Infowin_set(data[0].win);
 	Infowin_raise();
