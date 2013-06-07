@@ -5352,7 +5352,11 @@ static void init_stuff(void)
 	validate_dir(path);
 
 	/* Init the file paths */
-	init_file_paths(path, path, path);
+#ifdef PRIVATE_USER_PATH
+	init_file_paths(path, path, PRIVATE_USER_PATH, NULL);
+#else
+	init_file_paths(path, path, path, path);
+#endif /* PRIVATE_USER_PATH */
 
 	/* Hack -- Validate the paths */
 	validate_dir(ANGBAND_DIR_APEX);

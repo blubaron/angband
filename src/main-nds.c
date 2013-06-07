@@ -1298,7 +1298,11 @@ static void init_stuff(void)
 	strcpy(path, "/angband/lib/");
 
 	/* Prepare the filepaths */
-	init_file_paths(path, path, path);
+#ifdef PRIVATE_USER_PATH
+	init_file_paths(path, path, PRIVATE_USER_PATH, NULL);
+#else
+	init_file_paths(path, path, path, path);
+#endif /* PRIVATE_USER_PATH */
 
 	/* Hack */
 	strcpy(savefile, "/angband/lib/save/PLAYER");

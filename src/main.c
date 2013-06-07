@@ -154,7 +154,11 @@ static void init_stuff(void)
 	if (!suffix(datapath, PATH_SEP)) my_strcat(datapath, PATH_SEP, sizeof(datapath));
 
 	/* Initialize */
-	init_file_paths(configpath, libpath, datapath);
+#ifdef PRIVATE_USER_PATH
+	init_file_paths(configpath, libpath, PRIVATE_USER_PATH, NULL);
+#else
+	init_file_paths(configpath, libpath, datapath, datapath);
+#endif /* PRIVATE_USER_PATH */
 }
 
 
@@ -656,19 +660,6 @@ int main(int argc, char *argv[])
 				break;
 			else if (command_req->command == CMD_NEWGAME)
 			{
-/*#ifdef UNIX*/
-#if 0
-
-				/* Get the "user name" as a default player name, unless set with -u switch */
-				if (!op_ptr->full_name[0]) {
-					user_name(op_ptr->full_name, sizeof(op_ptr->full_name), player_uid);
-
-					/* Set the savefile to load */
-					savefile_set_name(player_safe_name(p_ptr));
-				}
-
-#endif /* UNIX */
-
 				event_signal(EVENT_LEAVE_INIT);
 				new_game = TRUE;
 				start_game = TRUE;

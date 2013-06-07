@@ -4078,7 +4078,11 @@ static void init_paths(void)
 	}
 
 	/* Prepare the paths */
-	init_file_paths(path, path, path);
+#ifdef PRIVATE_USER_PATH
+	init_file_paths(path, path, PRIVATE_USER_PATH, NULL);
+#else
+	init_file_paths(path, path, path, path);
+#endif /* PRIVATE_USER_PATH */
 
 	/* Create any missing directories */
 	create_needed_dirs();

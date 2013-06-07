@@ -31,6 +31,11 @@ void read_edit_files(void) {
 	if (!suffix(datapath, PATH_SEP))
 		my_strcat(datapath, PATH_SEP, sizeof(datapath));
 
-	init_file_paths(configpath, libpath, datapath);
+#ifdef PRIVATE_USER_PATH
+	init_file_paths(configpath, libpath, PRIVATE_USER_PATH, NULL);
+#else
+	init_file_paths(configpath, libpath, datapath, datapath);
+#endif /* PRIVATE_USER_PATH */
+
 	init_arrays();
 }

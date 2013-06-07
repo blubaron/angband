@@ -707,7 +707,11 @@ static void init_stuff(void)
 	my_strcpy(path, "XXX XXX XXX", sizeof(path));
 
 	/* Prepare the filepaths */
-	init_file_paths(path, path, path);
+#ifdef PRIVATE_USER_PATH
+	init_file_paths(path, path, PRIVATE_USER_PATH, NULL);
+#else
+	init_file_paths(path, path, path, path);
+#endif /* PRIVATE_USER_PATH */
 
 	/* Set up sound hook */
 	sound_hook = xxx_sound;

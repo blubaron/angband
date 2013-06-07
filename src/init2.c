@@ -124,11 +124,28 @@ static struct history_chart *findchart(struct history_chart *hs, unsigned int id
  * this function to be called multiple times, for example, to
  * try several base "path" values until a good one is found.
  */
-void init_file_paths(const char *configpath, const char *libpath, const char *datapath)
+void init_file_paths(const char *configpath, const char *libpath,
+                     const char *userpath, const char *datapath)
 {
-#ifdef PRIVATE_USER_PATH
 	char buf[1024];
-#endif /* PRIVATE_USER_PATH */
+	/*
+	 * lib path for architecture independent data
+	 * config path for host specific conficuration
+	 * user path for user visible data files
+	 * data path for saves/scores/raw files
+	 * user and data paths must be writable
+	 */
+
+	/* allow nulls, except in libpath, to reduce the length of calling lines */
+	if (configpath == NULL) {
+		configpath = libpath;
+	}
+	if (userpath == NULL) {
+		userpath = libpath;
+	}
+	if (datapath == NULL) {
+		datapath = userpath;
+	}
 
 	/*** Free everything ***/
 
@@ -164,29 +181,36 @@ void init_file_paths(const char *configpath, const char *libpath, const char *da
 	ANGBAND_DIR_XTRA_SOUND = string_make(format("%s" PATH_SEP "sound", ANGBAND_DIR_XTRA));
 	ANGBAND_DIR_XTRA_ICON = string_make(format("%s" PATH_SEP "icon", ANGBAND_DIR_XTRA));
 
-#ifdef PRIVATE_USER_PATH
+	/* Build user/ path names */
+	if (streq(userpath, libpath)) {
+		ANGBAND_DIR_USER = string_make(format("%suser", libpath));
+	} else
+	if (strncmp(ANGBAND_SYS, "test", 4) == 0) {
+		path_build(buf, sizeof(buf), userpath, "Test");
+		ANGBAND_DIR_USER = string_make(buf);
+	} else
+	{
+		path_build(buf, sizeof(buf), userpath, VERSION_NAME);
+		ANGBAND_DIR_USER = string_make(buf);
+	}
 
-	/* Build the path to the user specific directory */
-	if (strncmp(ANGBAND_SYS, "test", 4) == 0)
-		path_build(buf, sizeof(buf), PRIVATE_USER_PATH, "Test");
-	else
-		path_build(buf, sizeof(buf), PRIVATE_USER_PATH, VERSION_NAME);
-	ANGBAND_DIR_USER = string_make(buf);
+	if (streq(datapath, libpath)) {
+		ANGBAND_DIR_APEX = string_make(format("%sapex", libpath));
+		ANGBAND_DIR_SAVE = string_make(format("%ssave", libpath));
+	} else
+	if (streq(datapath, userpath)) {
+		/* Build user sub path names */
+		path_build(buf, sizeof(buf), ANGBAND_DIR_USER, "scores");
+		ANGBAND_DIR_APEX = string_make(buf);
 
-	path_build(buf, sizeof(buf), ANGBAND_DIR_USER, "scores");
-	ANGBAND_DIR_APEX = string_make(buf);
-
-	path_build(buf, sizeof(buf), ANGBAND_DIR_USER, "save");
-	ANGBAND_DIR_SAVE = string_make(buf);
-
-#else /* !PRIVATE_USER_PATH */
-
-	/* Build pathnames */
-	ANGBAND_DIR_USER = string_make(format("%suser", datapath));
-	ANGBAND_DIR_APEX = string_make(format("%sapex", datapath));
-	ANGBAND_DIR_SAVE = string_make(format("%ssave", datapath));
-
-#endif /* PRIVATE_USER_PATH */
+		path_build(buf, sizeof(buf), ANGBAND_DIR_USER, "save");
+		ANGBAND_DIR_SAVE = string_make(buf);
+	} else
+	{
+		/* Build data sub path names */
+		ANGBAND_DIR_APEX = string_make(format("%sapex", datapath));
+		ANGBAND_DIR_SAVE = string_make(format("%ssave", datapath));
+	}
 }
 
 
