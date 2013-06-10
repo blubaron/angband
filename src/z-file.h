@@ -132,6 +132,34 @@ extern void (*file_open_hook)(const char *path, file_type ftype);
  */
 bool file_close(ang_file *f);
 
+/*
+ * get a file descriptor for the file represented by f.
+ *
+ * Returns >0 if successful, 0 otherwise.
+ */
+int file_descriptor(ang_file *f);
+
+/**
+ * Test if file f is at its end.
+ *
+ * Returns TRUE if file is at end, FALSE otherwise.
+ */
+bool file_eof(ang_file *f);
+
+/*
+ * check for an error after a file operation on f.
+ *
+ * Returns 0 if no error, the error code otherwise.
+ */
+int file_error(ang_file *f);
+
+/*
+ * Flush any writes to file f.
+ *
+ * Returns 0 if successful, !=0 otherwise.
+ */
+int file_flush(ang_file *f);
+
 
 /** File locking **/
 
@@ -180,10 +208,32 @@ bool x_file_putf(ang_file *f, const char *fmt, ...);
 /** Byte-based IO */
 
 /**
+ * Seek to position `pos` in the file represented by `f`.
+ *
+ * Returns TRUE if successful, FALSE otherwise.
+ */
+bool file_seek(ang_file *f, u32b pos);
+
+/**
  * Skip 'bytes' bytes.
- * \returns TRUE if successful, FALSE otherwise.
+ * 
+ * returns TRUE if successful, FALSE otherwise.
  */
 bool file_skip(ang_file *f, int bytes);
+
+/**
+ * Move the file pointer backwards one byte.
+ * 
+ * returns TRUE if successful, FALSE otherwise.
+ */
+bool file_back_one(ang_file *f);
+
+/**
+ * get the current position in the file represented by `f`.
+ *
+ * Returns TRUE if successful, FALSE otherwise.
+ */
+bool file_getpos(ang_file *f, u32b *pos);
 
 /**
  * Reads n bytes from file 'f' into buffer 'buf'.
@@ -213,6 +263,27 @@ bool file_readc(ang_file *f, byte *b);
  * Returns TRUE if successful, FALSE otherwise.
  */
 bool file_writec(ang_file *f, byte b);
+
+/**
+ * flush the file represented by `f`.
+ *
+ * Returns TRUE if at end, FALSE otherwise.
+ */
+int file_flush(ang_file *f);
+
+/**
+ * test if the file represented by `f`is at its end.
+ *
+ * Returns TRUE if at end, FALSE otherwise.
+ */
+bool file_eof(ang_file *f);
+
+/**
+ * See if there was an error writing to the file represented by `f`.
+ *
+ * Returns 0 if no error, error code otherwise.
+ */
+int file_error(ang_file *f);
 
 
 

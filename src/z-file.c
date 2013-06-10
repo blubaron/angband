@@ -406,6 +406,38 @@ bool file_close(ang_file *f)
 	return TRUE;
 }
 
+/*
+ * get a file descriptor for the file represented by f.
+ */
+int file_descriptor(ang_file *f)
+{
+	return fileno(f->fh);
+}
+
+/*
+ * Test if file f is at its end.
+ */
+bool file_eof(ang_file *f)
+{
+	return feof(f->fh);
+}
+
+/*
+ * check for an error after a file operation on f.
+ */
+int file_error(ang_file *f)
+{
+	return ferror(f->fh);
+}
+
+/*
+ * Flush any writes to file f.
+ */
+int file_flush(ang_file *f)
+{
+	return fflush(f->fh);
+}
+
 
 
 /** Locking functions **/
@@ -448,9 +480,34 @@ void file_unlock(ang_file *f)
 /*
  * Seek to location 'pos' in file 'f'.
  */
+bool file_seek(ang_file *f, u32b pos)
+{
+	return (fseek(f->fh, pos, SEEK_SET) == 0);
+}
+
+/*
+ * Advance file pointer byte bytes in file 'f'.
+ */
 bool file_skip(ang_file *f, int bytes)
 {
 	return (fseek(f->fh, bytes, SEEK_CUR) == 0);
+}
+
+/*
+ * Move the file pointer backwards one byte.
+ */
+bool file_back_one(ang_file *f)
+{
+	return (fseek(f->fh, -1, SEEK_CUR) == 0);
+}
+
+bool file_getpos(ang_file *f, u32b *retpos)
+{
+	if (retpos) {
+		*retpos = ftell(f->fh);
+		return TRUE;
+	}
+	return FALSE;
 }
 
 /*
