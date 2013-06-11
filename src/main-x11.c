@@ -18,6 +18,8 @@
 #include "angband.h"
 #include "buildid.h"
 #include "settings.h"
+#include "init.h"
+#include "files.h"
 
 /*
  * This file helps Angband work with UNIX/X11 computers.
@@ -1934,11 +1936,11 @@ static errr CheckEvent(bool wait)
 		case ClientMessage:
 		{
 			if ((Atom)xev->xclient.data.l[0] == Metadpy->wmDeleteWindow) {
-				if (!inkey_flag) {
-					plog("You may not do that right now.");
-					break;
-				} else
 				if (character_generated) {
+					if (!inkey_flag) {
+						plog("You may not do that right now.");
+						break;
+					}
 					/* Forget messages */
 					msg_flag = FALSE;
 					/* Save the Game */
@@ -2654,6 +2656,7 @@ static void hook_quit(const char *str)
 
 	if (settings[0]) {
 		save_prefs(settings);
+		settings[0] = '\0';
 	}
 
 	/* Free allocated data */
@@ -2662,13 +2665,22 @@ static void hook_quit(const char *str)
 		term_data *td = &data[i];
 		term *t = &td->t;
 
-		if (td->font_want) string_free(td->font_want);
+		if (td->font_want) {
+			string_free(td->font_want);
+			td->font_want = NULL;
+		}
 
 		/* Free size hints */
-		if (td->sizeh) XFree(td->sizeh);
+		if (td->sizeh) {
+			XFree(td->sizeh);
+			td->sizeh = NULL;
+		}
 
 		/* Free class hints */
-		if (td->classh) XFree(td->classh);
+		if (td->classh) {
+			XFree(td->classh);
+			td->classh = NULL;
+		}
 
 		/* Free fonts */
 		if (td->fnt) {
@@ -2685,7 +2697,7 @@ static void hook_quit(const char *str)
 		}
 
 		/* Free term */
-		if (t) (void)term_nuke(t);
+		if (t && td->visible) (void)term_nuke(t);
 	}
 
 	/* Free colors */
