@@ -20,9 +20,9 @@
 #include "ui-menu.h"
 #include "pickfile.h"
 
-static int comp_string(const void *a, const void *b)
+static int comp_pstring(const void *a, const void *b)
 {
-	return strcmp((const char*)a,(const char*)b);
+	return strcmp(*(const char**)a,*(const char**)b);
 }
 
 /* Pick a file from the given directory, with one of the given extensions.
@@ -170,7 +170,7 @@ errr file_pick(char*out, int outlen, const char *title, const char *dir,
 	}
 
 	/* Sort the strings */
-	sort((void *)filelist, count, sizeof(*filelist), comp_string);
+	sort((void *)filelist, count, sizeof(*filelist), comp_pstring);
 
 	menu = menu_new(MN_SKIN_COLUMNS, menu_find_iter(MN_ITER_STRINGS));
 	if (!menu) {
