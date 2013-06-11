@@ -216,15 +216,45 @@ int LoadPNG(Display *dpy, const char *filename, XImage **ret_color, XImage **ret
 	}
 
 	/* premultiply the alpha data if we need to */
-	/*if (premultiply && (color_type == PNG_COLOR_TYPE_RGBA)) {
+	if (premultiply && (color_type == PNG_COLOR_TYPE_RGBA)) {
 		int x;
-		u32b *srcrow;
+		png_byte r,g,b,a;
+		png_byte *row;
+
 		for (y = 0; y < height; ++y) {
-			srcrow = (u32b*) (color_data + row_bytes*y);
+			row = (png_byte *) (color_data + row_bytes*y);
 			for (x = 0; x < width; ++x) {
+				a = *(row + x*4 + 3);
+				if (a == 0) {
+					/* for every alpha that is fully transparent, make the
+					 * corresponding color true black */
+					*(row + x*4 + 0) = 0;
+					*(row + x*4 + 1) = 0;
+					*(row + x*4 + 2) = 0;
+				} else
+				if (a != 255) {
+					float rf,gf,bf,af;
+					/* blend the color value based on this value */
+					r = *(row + x*4 + 0);
+					g = *(row + x*4 + 1);
+					b = *(row + x*4 + 2);
+
+					rf = ((float)r) / 255.f;
+					gf = ((float)g) / 255.f;
+					bf = ((float)b) / 255.f;
+					af = ((float)a) / 255.f;
+        
+					r = (png_byte)(rf*af*255.f);
+					g = (png_byte)(gf*af*255.f);
+					b = (png_byte)(bf*af*255.f);
+        
+					*(row + x*4 + 0) = r;
+					*(row + x*4 + 1) = g;
+					*(row + x*4 + 2) = b;
+				}
 			}
 		}
-	}*/
+	}
 
 	/* create the Image structure */
 	color = XCreateImage(dpy, visual, scr_depth, ZPixmap, 0,

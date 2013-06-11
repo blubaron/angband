@@ -41,18 +41,15 @@ int ReadTiles(Display *dpy, const char* filename, XTilesheet *tiles)
 	}
 	if (strncmp(ext+1, "png", 3) == 0) {
 		if (tiles->bFlags & 1) {
-			/* alpha blending not supported yet, so just load the file normally */
-			if (LoadPNG(dpy, filename, &tiles_raw, &mask_raw, &wid, &hgt, FALSE) < 0) {
-				plog_fmt("Cannot read file '%s'.", filename);
-				return -4;
-			}
-#if 0
 			/* load with an expectation of alpha values, rather than a mask */
 			/* png files are not supposed to have their color premultiplied
 			 * with alpha, so see if the given file is already premultiplied */
+
+			/* alpha blending not supported yet, so load a mask as well */
+			
 			if (strstr(filename, "_pre")) {
 				/* if so, just load it */
-				if (LoadPNG(dpy, filename, &tiles_raw, NULL, &wid, &hgt, FALSE) < 0) {
+				if (LoadPNG(dpy, filename, &tiles_raw, &mask_raw, &wid, &hgt, FALSE) < 0) {
 					plog_fmt("Cannot read file '%s'.", filename);
 					return -4;
 				}
@@ -80,14 +77,14 @@ int ReadTiles(Display *dpy, const char* filename, XTilesheet *tiles)
 				}
 				if (ext2 && (filelen < 1018)) {
 					/* at this point we know the file exists, so load it */
-					if (LoadPNG(dpy, modname, &tiles_raw, NULL, &wid, &hgt, FALSE) < 0) {
+					if (LoadPNG(dpy, modname, &tiles_raw, &mask_raw, &wid, &hgt, FALSE) < 0) {
 						plog_fmt("Cannot read premultiplied version of file '%s'.", filename);
 						return -4;
 					}
 				} else
 				/* if not, load the base file and premultiply it */
 				{
-					if (LoadPNG(dpy, filename, &tiles_raw, NULL, &wid, &hgt, TRUE) < 0) {
+					if (LoadPNG(dpy, filename, &tiles_raw, &mask_raw, &wid, &hgt, TRUE) < 0) {
 						plog_fmt("Cannot read premultiplied version of file '%s'.", filename);
 						return -4;
 					}
@@ -97,7 +94,6 @@ int ReadTiles(Display *dpy, const char* filename, XTilesheet *tiles)
 					}*/
 				}
 			}
-#endif
 		} else {
 			if (LoadPNG(dpy, filename, &tiles_raw, &mask_raw, &wid, &hgt, FALSE) < 0) {
 				plog_fmt("Cannot read file '%s'.", filename);

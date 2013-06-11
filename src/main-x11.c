@@ -1333,6 +1333,9 @@ static char settings[1024];
 XTilesheet tiles; /* tiles loaded from disk */
 XTilesheet viewtiles; /* tiles that are displayed on screen */
 XTilesheet maptiles; /* tiles same size as font */
+
+int overdraw = 0;
+int overdraw_max = 0;
 #endif /* USE_GRAPHICS */
 
 
@@ -1503,6 +1506,8 @@ int init_graphics_x11()
 
 			current_graphics_mode = mode;
 			ANGBAND_GRAF = mode->pref;
+			overdraw = mode->overdrawRow;
+			overdraw_max = mode->overdrawMax;
 		}
 		if (res < 0) {
 			return res;
@@ -1517,7 +1522,9 @@ int init_graphics_x11()
 		term *t = &(data[i].t);
 
 		/* Graphics hook */
-		if (current_graphics_mode->alphablend) {
+		/* alpha blending is not supported yet
+		if (current_graphics_mode->alphablend || overdraw) {*/
+		if (overdraw) {
 			t->pict_hook = Term_pict_alpha_x11;
 		} else {
 			t->pict_hook = Term_pict_x11;
@@ -1546,6 +1553,8 @@ void close_graphics_x11()
 		/* Use graphics sometimes */
 		data[i].t.higher_pict = FALSE;
 	}
+	overdraw = 0;
+	overdraw_max = 0;
 }
 
 #endif /* USE_GRAPHICS */
@@ -2168,7 +2177,7 @@ errr Term_pict_alpha_x11(int ox, int oy, int n, const int *ap, const wchar_t *cp
 
 	term_data *td = (term_data*)(Term->data);
 	
-	int wid, hgt;
+	int wid, hgt, overy;
 	XImage *tiles;
 	XImage *mask;
 
@@ -2179,11 +2188,11 @@ errr Term_pict_alpha_x11(int ox, int oy, int n, const int *ap, const wchar_t *cp
 	
 	for (i = 0; i < n; ++i)
 	{
-		a = (*ap++) & 0x7f;
-		c = (*cp++) & 0x7f;
+		a = ((byte)*ap++) & 0x7F;
+		c = ((char)*cp++) & 0x7F;
 
-		ta = (*tap++) & 0x7f;
-		tc = (*tcp++) & 0x7f;
+		ta = ((byte)*tap++) & 0x7F;
+		tc = ((char)*tcp++) & 0x7F;
 
 		/* What are we drawing? */
 		if (Term_is_bigtiled(ox + i, oy))
@@ -2192,6 +2201,7 @@ errr Term_pict_alpha_x11(int ox, int oy, int n, const int *ap, const wchar_t *cp
 			mask = viewtiles.mask;
 			wid = viewtiles.CellWidth;
 			hgt = viewtiles.CellHeight;
+			overy = tile_height;
 		}
 		else
 		{
@@ -2199,6 +2209,7 @@ errr Term_pict_alpha_x11(int ox, int oy, int n, const int *ap, const wchar_t *cp
 			mask = maptiles.mask;
 			wid = maptiles.CellWidth;
 			hgt = maptiles.CellHeight;
+			overy = 1;
 		}
 
 		/* For extra speed - cache these values */
@@ -2209,35 +2220,79 @@ errr Term_pict_alpha_x11(int ox, int oy, int n, const int *ap, const wchar_t *cp
 		x2 = (tc & 0x7F) * wid;
 		y2 = (ta & 0x7F) * hgt;
 
-		/* Optimise the common case */
-		if (((x1 == x2) && (y1 == y2)) ||
-		    !(((byte)ta & 0x80) && ((byte)tc & 0x80)))
+		/* Draw object / terrain */
+		XPutImage(Metadpy->dpy, td->win->win,
+					clr[0]->gc,
+					tiles,
+					x2, y2,
+					x, y,
+					wid, hgt);
+		if (overdraw && (ta >= overdraw) && (y > 2)
+		  && (ta <= overdraw_max))
 		{
-			/* Draw object / terrain */
-			XPutImage(Metadpy->dpy, td->win->win,
-						clr[0]->gc,
-						tiles,
-						x1, y1,
-						x, y,
-						wid, hgt);
-		} else {
-			/* This section has not been tested */
-			/* Draw terrain */
-			XPutImage(Metadpy->dpy, td->win->win,
-						clr[0]->gc,
-						tiles,
-						x2, y2,
-						x, y,
-						wid, hgt);
-			/* Draw object */
+			if (mask) {
+				XSetFunction(Metadpy->dpy, clr[0]->gc, GXand);
+				XPutImage(Metadpy->dpy, td->win->win,
+							clr[0]->gc,
+							mask,
+							x2, y2-hgt,
+							x, y-hgt,
+							wid, hgt);
+			}
 			XSetFunction(Metadpy->dpy, clr[0]->gc, GXor);
 			XPutImage(Metadpy->dpy, td->win->win,
 						clr[0]->gc,
 						tiles,
-						x1, y1,
-						x, y,
+						x2, y2-hgt,
+						x, y-hgt,
 						wid, hgt);
 			XSetFunction(Metadpy->dpy, clr[0]->gc, GXcopy);
+			Term_mark(ox,oy-overy);
+			Term_mark(ox,oy);
+		}
+		/* draw object */
+		if ((a != ta) || (c != tc)) {
+			if (overdraw && (a >= overdraw) && (y > 2)
+			  && (a <= overdraw_max))
+			{
+				if (mask) {
+					XSetFunction(Metadpy->dpy, clr[0]->gc, GXand);
+					XPutImage(Metadpy->dpy, td->win->win,
+								clr[0]->gc,
+								mask,
+								x1, y1-hgt,
+								x, y-hgt,
+								wid, 2*hgt);
+				}
+				XSetFunction(Metadpy->dpy, clr[0]->gc, GXor);
+				XPutImage(Metadpy->dpy, td->win->win,
+							clr[0]->gc,
+							tiles,
+							x1, y1-hgt,
+							x, y-hgt,
+							wid, 2*hgt);
+				XSetFunction(Metadpy->dpy, clr[0]->gc, GXcopy);
+				Term_mark(ox,oy-overy);
+				Term_mark(ox,oy);
+			} else {
+				if (mask) {
+					XSetFunction(Metadpy->dpy, clr[0]->gc, GXand);
+					XPutImage(Metadpy->dpy, td->win->win,
+								clr[0]->gc,
+								mask,
+								x1, y1,
+								x, y,
+								wid, hgt);
+				}
+				XSetFunction(Metadpy->dpy, clr[0]->gc, GXor);
+				XPutImage(Metadpy->dpy, td->win->win,
+							clr[0]->gc,
+							tiles,
+							x1, y1,
+							x, y,
+							wid, hgt);
+				XSetFunction(Metadpy->dpy, clr[0]->gc, GXcopy);
+			}
 		}
 			
 		x += wid;
@@ -3006,7 +3061,7 @@ errr init_x11(int argc, char **argv)
 
 
 	/* Initialize the windows */
-	for (i = 0; i < MAX_TERM_DATA; i++)
+	for (i = 0; i <  MAX_TERM_DATA ; i++)
 	{
 		term_data *td = &data[i];
 
