@@ -1604,13 +1604,6 @@ static char settings[1024];
 
 
 /*
- * Remember the number of terminal windows open
- */
-static int term_windows_open;
-
-
-
-/*
  * Process a keypress event
  */
 static void react_keypress(XKeyEvent *ev)
@@ -2793,14 +2786,11 @@ errr init_x11(int argc, char **argv)
 	/* Init the Metadpy if possible */
 	if (Metadpy_init_name(dpy_name)) return (-1);
 
-	/* Remember the number of terminal windows */
-	term_windows_open = num_term;
 
 	/* Prepare cursor color */
 	xor = ZNEW(infoclr);
 	Infoclr_set(xor);
 	Infoclr_init_ppn(Metadpy->fg, Metadpy->bg, "xor", 0);
-
 
 	/* Prepare normal colors */
 	for (i = 0; i < MAX_COLORS * BG_MAX; ++i)
@@ -2867,23 +2857,22 @@ errr init_x11(int argc, char **argv)
 
 
 	/* Initialize the windows */
-	for (i = 0; i < num_term; i++)
+	for (i = 0; i < MAX_TERM_DATA; i++)
 	{
 		term_data *td = &data[i];
 
-		/* Env-vars overwrite the settings in the settings file */
-		check_envvar_x11(td, i);
+		if (td->visible) {
+			/* Env-vars overwrite the settings in the settings file */
+			check_envvar_x11(td, i);
 
-		/* Initialize the term_data */
-		term_data_init(td, i);
+			/* Initialize the term_data */
+			term_data_init(td, i);
 
-		/* Save global entry */
-		angband_term[i] = Term;
+			/* Save global entry */
+			angband_term[i] = Term;
+		}
 	}
-	for (; i < MAX_TERM_DATA; i++)
-	{
-		data[i].visible = 0;
-	}
+
 	/* Raise the "Angband" window */
 	Infowin_set(data[0].win);
 	Infowin_raise();
