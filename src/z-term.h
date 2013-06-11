@@ -402,6 +402,8 @@ extern errr Term_activate(term *t);
 extern errr term_nuke(term *t);
 extern errr term_init(term *t, int w, int h, int k);
 
+extern bool Term_is_bigtiled(int x, int y);
+
 extern bool panel_contains(unsigned int y, unsigned int x);
 
 #endif /* INCLUDED_Z_TERM_H */
