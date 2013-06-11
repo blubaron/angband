@@ -2652,3 +2652,33 @@ bool panel_contains(unsigned int y, unsigned int x)
 	wid = SCREEN_WID;
 	return (y - Term->offset_y) < hgt && (x - Term->offset_x) < wid;
 }
+
+/*
+ * Is a square in a bigtiled region?
+ */
+bool Term_is_bigtiled(int x, int y)
+{
+	if (Term->scr->a[y][x]==255) {
+		return (TRUE);
+	}
+	if (tile_width > 1) {
+		if ((x < Term->wid-1) && (Term->scr->a[y][x+1]==255)) {
+			return (TRUE);
+		}
+		if ((x == Term->wid-1) && (Term->scr->a[y][x-1]==255)) {
+			return (TRUE);
+		}
+	}
+	if ((tile_height > 1) && (y > 0)) {
+		/* top and bottom rows can never be bigtiled */
+		if ((y < Term->hgt-2) && (Term->scr->a[y+1][x]==255)) {
+			return (TRUE);
+		}
+		if ((y == Term->hgt-2) && (Term->scr->a[y-1][x]==255)) {
+			return (TRUE);
+		}
+	}
+
+	return (FALSE);
+}
+
