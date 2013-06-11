@@ -1462,22 +1462,6 @@ static void pixel_to_square(int * const x, int * const y,
 	(*y) = (oy - Infowin->oy) / td->tile_hgt;
 }
 
-/*
- * Find the pixel at the top-left corner of a square.
- */
-static void square_to_pixel(int *x, int *y, int ox, int oy)
-{
-	term_data *td = (term_data*)(Term->data);
-	
-	if (Term_is_bigtiled(ox, oy)) {
-		(*x) = ox * td->tile_wid * tile_width + Infowin->ox;
-		(*y) = oy * td->tile_hgt * tile_height + Infowin->oy;
-	} else {
-		(*x) = ox * td->tile_wid + Infowin->ox;
-		(*y) = oy * td->tile_hgt + Infowin->oy;
-	}
-}
-
 #ifdef USE_GRAPHICS
 
 errr Term_pict_x11(int ox, int oy, int n, const int *ap, const wchar_t *cp, const int *tap, const wchar_t *tcp);

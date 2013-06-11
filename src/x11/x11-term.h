@@ -286,17 +286,9 @@ struct term_data
 	Metadpy = M
 
 
-/* Initialize 'M' using Display 'D' */
-//#define Metadpy_init_dpy(D) \
-	Metadpy_init_2(D,cNULL)
-
 /* Initialize 'M' using a Display named 'N' */
 #define Metadpy_init_name(N) \
 	Metadpy_init_2((Display*)(NULL),N)
-
-/* Initialize 'M' using the standard Display */
-//#define Metadpy_init() \
-	Metadpy_init_name("")
 
 
 /* Init an infowin by giving father as an (info_win*) (or NULL), and data */
@@ -308,11 +300,6 @@ struct term_data
 /* Init a top level infowin by pos,size,bord,Colors */
 #define Infowin_init_top(X,Y,W,H,B,FG,BG) \
 	Infowin_init_data(None,X,Y,W,H,B,FG,BG)
-
-
-/* Request a new standard window by giving Dad infowin and X,Y,W,H */
-//#define Infowin_init_std(D,X,Y,W,H,B) \
-	Infowin_init_dad(D,X,Y,W,H,B,Metadpy->fg,Metadpy->bg)
 
 
 /* Set the current Infowin */
@@ -330,12 +317,6 @@ struct term_data
 
 #define Infoclr_init_ppn(F,B,O,M) \
 	Infoclr_init_ppo(F,B,Infoclr_Opcode(O),M)
-
-#define Infoclr_init_cco(F,B,O,M) \
-	Infoclr_init_ppo(Infoclr_Pixell(F),Infoclr_Pixell(B),O,M)
-
-#define Infoclr_init_ccn(F,B,O,M) \
-	Infoclr_init_cco(F,B,Infoclr_Opcode(O),M)
 
 
 /* Set the current infofnt */

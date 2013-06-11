@@ -33,11 +33,11 @@
  */
 int default_layout_x11(term_data *data, int maxterms, metadpy *dpy)
 {
-	int sx, sy;
+	/*int sx, sy;*/
 
 	if (!dpy) {
 		return -1;
 	}
-printf("default layout x11\n");
+/*printf("default layout x11\n");*/
 	return 0;
 }
