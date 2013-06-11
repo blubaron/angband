@@ -78,7 +78,8 @@ LIBS += $(patsubst -D%,,$(patsubst -I%,, $(MODULES)))
 
 
 # Object definitions
-OBJS = $(BASEOBJS) main.o main-stats.o main-gcu.o main-x11.o main-sdl.o snd-sdl.o settings.o pickfile.o
+OBJS = $(BASEOBJS) main.o main-stats.o main-gcu.o main-x11.o main-sdl.o snd-sdl.o \
+  settings.o pickfile.o x11/x11-layout.o x11/x11-menu.o x11/x11-png.o x11/x11-tiles.o
 
 
 

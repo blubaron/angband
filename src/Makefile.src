@@ -50,6 +50,22 @@ ZFILES = z-bitflag.o z-file.o z-form.o z-msg.o z-quark.o z-queue.o z-rand.o \
 BASEMAINFILES = main.o \
 	pickfile.o
 
+PNGFILES = libpng/png.o \
+	libpng/pngerror.o \
+	libpng/pngget.o \
+	libpng/pngmem.o \
+	libpng/pngpread.o \
+	libpng/pngset.o \
+	libpng/pngread.o \
+	libpng/pngrio.o \
+	libpng/pngrtran.o \
+	libpng/pngrutil.o \
+	libpng/pngtrans.o \
+	libpng/pngwio.o \
+	libpng/pngwrite.o \
+	libpng/pngwtran.o \
+	libpng/pngwutil.o
+
 GCUMAINFILES = main-gcu.o
 
 OSXMAINFILES = main-crb.o
@@ -67,10 +83,16 @@ WINMAINFILES = \
         win/readdib.o \
         win/readpng.o \
         win/scrnshot.o \
-		win/win-layout.o
+	win/win-layout.o
 
 X11MAINFILES = main-x11.o \
 	settings.o \
+	x11/x11-layout.o \
+	x11/x11-menu.o \
+	x11/x11-png.o \
+	x11/x11-tiles.o
+
+LIBS += -lm
 
 ANGFILES = \
 	attack.o \

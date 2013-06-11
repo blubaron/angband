@@ -105,15 +105,16 @@
 
 
 #ifdef USE_X11
+#include "x11/x11-term.h"
+#include "x11/x11-tile.h"
 
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
 #include <X11/keysym.h>
 #include <X11/keysymdef.h>
 #include <X11/XKBlib.h>
 
 #include "main.h"
-int default_layout_x11(){return 0;}
+#include "grafmode.h"
+
 #ifndef IsModifierKey
 
 /*
@@ -176,274 +177,6 @@ int default_layout_x11(){return 0;}
 
 
 
-/**** Generic Types ****/
-
-
-/*
- * An X11 pixell specifier
- */
-typedef unsigned long Pixell;
-
-/*
- * The structures defined below
- */
-typedef struct metadpy metadpy;
-typedef struct infowin infowin;
-typedef struct infoclr infoclr;
-typedef struct infofnt infofnt;
-
-
-/*
- * A structure summarizing a given Display.
- *
- *	- The Display itself
- *	- The default Screen for the display
- *	- The virtual root (usually just the root)
- *	- The default colormap (from a macro)
- *  - The Alt key modifier mask
- *  - The Super key modifier mask
- *
- *	- The "name" of the display
- *
- *	- The socket to listen to for events
- *
- *	- The width of the display screen (from a macro)
- *	- The height of the display screen (from a macro)
- *	- The bit depth of the display screen (from a macro)
- *
- *	- The black Pixell (from a macro)
- *	- The white Pixell (from a macro)
- *
- *	- The background Pixell (default: black)
- *	- The foreground Pixell (default: white)
- *	- The maximal Pixell (Equals: ((2 ^ depth)-1), is usually ugly)
- *
- *	- Bit Flag: Force all colors to black and white (default: !color)
- *	- Bit Flag: Allow the use of color (default: depth > 1)
- *	- Bit Flag: We created 'dpy', and so should nuke it when done.
- */
-struct metadpy
-{
-	Display *dpy;
-	Screen *screen;
-	Window root;
-	Colormap cmap;
-	Atom wmDeleteWindow; /* this is used to intercept window closing requests */
-
-	unsigned int alt_mask;
-	unsigned int super_mask;
-
-	char *name;
-
-	int fd;
-
-	unsigned int width;
-	unsigned int height;
-	unsigned int depth;
-
-	int wmbdr_x;
-	int wmbdr_y;
-
-	Pixell black;
-	Pixell white;
-
-	Pixell bg;
-	Pixell fg;
-	Pixell zg;
-
-	unsigned int mono:1;
-	unsigned int color:1;
-	unsigned int nuke:1;
-};
-
-
-
-/*
- * A Structure summarizing Window Information.
- *
- * I assume that a window is at most 30000 pixels on a side.
- * I assume that the root windw is also at most 30000 square.
- *
- *	- The Window
- *	- The current Input Event Mask
- *
- *	- The location of the window
- *	- The saved (startup) location of the window
- *	- The width, height of the window
- *	- The border width of this window
- *
- *	- Byte: 1st Extra byte
- *
- *	- Bit Flag: This window is currently Mapped
- *	- Bit Flag: This window needs to be redrawn
- *	- Bit Flag: This window has been resized
- *
- *	- Bit Flag: We should nuke 'win' when done with it
- *
- *	- Bit Flag: 1st extra flag
- *	- Bit Flag: 2nd extra flag
- *	- Bit Flag: 3rd extra flag
- *	- Bit Flag: 4th extra flag
- */
-struct infowin
-{
-	Window win;
-	long mask;
-
-	s16b ox, oy;
-
-	s16b x, y;
-	s16b w, h;
-	u16b b;
-
-	byte byte1;
-
-	unsigned int mapped:1;
-	unsigned int redraw:1;
-	unsigned int resize:1;
-
-	unsigned int nuke:1;
-
-	unsigned int flag1:1;
-	unsigned int flag2:1;
-	unsigned int flag3:1;
-	unsigned int flag4:1;
-};
-
-
-
-
-
-
-/*
- * A Structure summarizing Operation+Color Information
- *
- *	- The actual GC corresponding to this info
- *
- *	- The Foreground Pixell Value
- *	- The Background Pixell Value
- *
- *	- Num (0-15): The operation code (As in Clear, Xor, etc)
- *	- Bit Flag: The GC is in stipple mode
- *	- Bit Flag: Destroy 'gc' at Nuke time.
- */
-struct infoclr
-{
-	GC gc;
-
-	Pixell fg;
-	Pixell bg;
-
-	unsigned int code:4;
-	unsigned int stip:1;
-	unsigned int nuke:1;
-};
-
-
-
-/*
- * A Structure to Hold Font Information
- *
- *	- The 'XFontStruct*' (yields the 'Font')
- *
- *	- The font name
- *
- *	- The default character width
- *	- The default character height
- *	- The default character ascent
- *
- *	- Byte: Pixel offset used during fake mono
- *
- *	- Flag: Force monospacing via 'wid'
- *	- Flag: Nuke info when done
- */
-struct infofnt
-{
-	XFontSet	fs;
-
-	const char *name;
-
-	s16b wid;
-	s16b twid;
-	s16b hgt;
-	s16b asc;
-
-	byte off;
-
-	unsigned int mono:1;
-	unsigned int nuke:1;
-};
-
-
-
-/*
- * Forward declare
- */
-typedef struct term_data term_data;
-
-/*
- * A structure for each "term"
- */
-struct term_data
-{
-	term t;
-
-	infofnt *fnt;
-
-	infowin *win;
-
-	int tile_wid;
-	int tile_hgt;
-
-	/* Pointers to allocated data, needed to clear up memory */
-	XClassHint *classh;
-	XSizeHints *sizeh;
-
-	/* info loaded from pref file */
-	int rows;
-	int cols;
-	int pos_x;
-	int pos_y;
-	int bdr_x;
-	int bdr_y;
-
-	bool visible;
-
-	char *font_want;
-};
-
-
-
-/**** Generic Macros ****/
-
-/* Initialize 'M' using a Display named 'N' */
-#define Metadpy_init_name(N) \
-	Metadpy_init_2((Display*)(NULL),N)
-
-/* Init a top level infowin by pos,size,bord,Colors */
-#define Infowin_init_top(X,Y,W,H,B,FG,BG) \
-	Infowin_init_data(None,X,Y,W,H,B,FG,BG)
-
-/* Set the current Infowin */
-#define Infowin_set(I) \
-	(Infowin = (I))
-
-
-/* Set the current Infoclr */
-#define Infoclr_set(C) \
-	(Infoclr = (C))
-
-
-#define Infoclr_init_ppo(F,B,O,M) \
-	Infoclr_init_data(F,B,O,M)
-
-#define Infoclr_init_ppn(F,B,O,M) \
-	Infoclr_init_ppo(F,B,Infoclr_Opcode(O),M)
-
-/* Set the current infofnt */
-#define Infofnt_set(I) \
-	(Infofnt = (I))
-
 /**** Generic Globals ****/
 
 
@@ -459,7 +192,7 @@ static metadpy metadpy_default;
 static metadpy *Metadpy = &metadpy_default;
 static infowin *Infowin = (infowin*)(NULL);
 static infoclr *Infoclr = (infoclr*)(NULL);
-static infofnt *Infofnt = (infofnt*)(NULL);
+infofnt *Infofnt = (infofnt*)(NULL);
 
 
 /*
@@ -1585,11 +1318,6 @@ static byte color_table_x11[MAX_COLORS][4];
 
 
 /*
- * The number of term data structures
- */
-#define MAX_TERM_DATA 8
-
-/*
  * The array of term data structures
  */
 static term_data data[MAX_TERM_DATA];
@@ -1601,6 +1329,11 @@ static term_data data[MAX_TERM_DATA];
 /*static const char *x11-settings = "x11-settings.txt";*/
 static char settings[1024];
 
+#ifdef USE_GRAPHICS
+XTilesheet tiles; /* tiles loaded from disk */
+XTilesheet viewtiles; /* tiles that are displayed on screen */
+XTilesheet maptiles; /* tiles same size as font */
+#endif /* USE_GRAPHICS */
 
 
 /*
@@ -1729,7 +1462,109 @@ static void pixel_to_square(int * const x, int * const y,
 	(*y) = (oy - Infowin->oy) / td->tile_hgt;
 }
 
+/*
+ * Find the pixel at the top-left corner of a square.
+ */
+static void square_to_pixel(int *x, int *y, int ox, int oy)
+{
+	term_data *td = (term_data*)(Term->data);
+	
+	if (Term_is_bigtiled(ox, oy)) {
+		(*x) = ox * td->tile_wid * tile_width + Infowin->ox;
+		(*y) = oy * td->tile_hgt * tile_height + Infowin->oy;
+	} else {
+		(*x) = ox * td->tile_wid + Infowin->ox;
+		(*y) = oy * td->tile_hgt + Infowin->oy;
+	}
+}
 
+#ifdef USE_GRAPHICS
+
+errr Term_pict_x11(int ox, int oy, int n, const int *ap, const wchar_t *cp, const int *tap, const wchar_t *tcp);
+errr Term_pict_alpha_x11(int ox, int oy, int n, const int *ap, const wchar_t *cp, const int *tap, const wchar_t *tcp);
+int init_graphics_x11()
+{
+	int res, i;
+	graphics_mode *mode;
+	char filename[1024];
+	Display *dpy = Metadpy->dpy;
+	term_data *td = &data[0];
+
+	mode = get_graphics_mode(arg_graphics);
+	if (mode && mode->file) {
+		if (mode->alphablend & 1) {
+			/* set or clear the flags needed in the ReadTiles function */
+			tiles.bFlags |= 1;
+		} else {
+			tiles.bFlags &= ~1;
+		}
+
+		/* Try the file */
+		path_build(filename, 1024, ANGBAND_DIR_XTRA_GRAF, mode->file);
+
+		res = ReadTiles(dpy, filename, &tiles);
+		if (res >= 0) {
+			/* set the cell size used during resize */
+			tiles.CellWidth = mode->cell_width;
+			tiles.CellHeight = mode->cell_height;
+
+			/* copy the tiles to the other tile sheets */
+			viewtiles.CellWidth = td->tile_wid * tile_width;
+			viewtiles.CellHeight = td->tile_hgt * tile_height;
+			res = ResizeTiles(dpy, &viewtiles, &tiles);
+
+			maptiles.CellWidth = td->tile_wid;
+			maptiles.CellHeight = td->tile_hgt;
+			res = ResizeTiles(dpy, &maptiles, &tiles);
+
+			current_graphics_mode = mode;
+			ANGBAND_GRAF = mode->pref;
+		}
+		if (res < 0) {
+			return res;
+		}
+	} else {
+		plog_fmt("Desired graphics mode (%d) not found.", arg_graphics);
+		return -2;
+	}
+
+	/* Initialize the windows */
+	for (i = 0; i < MAX_TERM_DATA; i++) {
+		term *t = &(data[i].t);
+
+		/* Graphics hook */
+		if (current_graphics_mode->alphablend) {
+			t->pict_hook = Term_pict_alpha_x11;
+		} else {
+			t->pict_hook = Term_pict_x11;
+		}
+
+		/* Use graphics sometimes */
+		t->higher_pict = TRUE;
+	}
+
+	return 0;
+}
+
+void close_graphics_x11()
+{
+	int i;
+
+	FreeTiles(&tiles);
+	FreeTiles(&viewtiles);
+	FreeTiles(&maptiles);
+	current_graphics_mode = NULL;
+
+	for (i = 0; i < MAX_TERM_DATA; i++) {
+		/* Graphics hook */
+		data[i].t.pict_hook = NULL;
+
+		/* Use graphics sometimes */
+		data[i].t.higher_pict = FALSE;
+	}
+}
+
+#endif /* USE_GRAPHICS */
 
 
 /*
@@ -1818,6 +1653,11 @@ static errr CheckEvent(bool wait)
 			/* switch buttons 2 and 3 to match other platforms (for 3 button mice) */
 			if (z == 3) z = 2;
 			else if (z == 2) z = 3;
+
+			/* Extract the modifiers */
+			if (xev->xbutton.state & ControlMask) z |= 16;
+			if (xev->xbutton.state & ShiftMask) z |= 32;
+			if (xev->xbutton.state & Mod1Mask) z |= 64;
 
 			/* The co-ordinates are only used in Angband format. */
 			pixel_to_square(&x, &y, x, y);
@@ -2025,6 +1865,66 @@ static errr Term_xtra_x11_react(void)
 		}
 	}
 
+#ifdef USE_GRAPHICS
+
+	/* Handle "arg_graphics" */
+	if (use_graphics != arg_graphics)
+	{
+		/* Switch off transparency */
+		use_transparency = FALSE;
+		
+		/* Free any existing images */
+		FreeTiles(&tiles);
+		FreeTiles(&viewtiles);
+		FreeTiles(&maptiles);
+
+		/* Initialize (if needed) */
+		if (arg_graphics && (init_graphics_x11() < 0))
+		{
+			/* Warning */
+			plog("Cannot initialize graphics!");
+
+			/* Cannot enable */
+			arg_graphics = GRAPHICS_NONE;
+			tile_width = 1;
+			tile_height = 1;
+			close_graphics_x11();
+		}
+    
+		/* Change setting */
+		use_graphics = arg_graphics;
+
+		/* Reset visuals */
+		reset_visuals(TRUE);
+
+	}
+
+#endif /* USE_GRAPHICS */
+
+#if 0	/* Clean up windows */
+	for (i = 0; i < MAX_TERM_DATA; i++)
+	{
+		term *old = Term;
+
+		term_data *td = &data[i];
+
+		/* Update resized windows */
+		if ((td->cols != td->t.wid) || (td->rows != td->t.hgt))
+		{
+			/* Activate */
+			Term_activate(&td->t);
+
+			/* Hack -- Resize the term */
+			Term_resize(td->cols, td->rows);
+
+			/* Redraw the contents */
+			Term_redraw();
+
+			/* Restore */
+			Term_activate(old);
+		}
+	}
+#endif
 	/* Success */
 	return (0);
 }
@@ -2136,6 +2036,251 @@ static errr Term_text_x11(int x, int y, int n, int a, const wchar_t *s)
 
 	/* Success */
 	return (0);
+}
+
+
+#ifdef USE_GRAPHICS
+
+
+/*
+ * Draw some graphical characters.
+ */
+errr Term_pict_x11(int ox, int oy, int n, const int *ap, const wchar_t *cp, const int *tap, const wchar_t *tcp)
+{
+	int i;
+	int x1 = 0, y1 = 0;
+
+	byte a;
+	char c;
+
+	byte ta;
+	char tc;
+	
+	int x, y;
+	int x2, y2;
+
+	term_data *td = (term_data*)(Term->data);
+	
+	int wid, hgt;
+	XImage *tiles;
+	XImage *mask;
+
+	/* Starting point */
+	/*square_to_pixel(&x, &y, ox, oy);*/
+	x = ox * td->tile_wid + Infowin->ox;
+	y = oy * td->tile_hgt + Infowin->oy;
+	
+	for (i = 0; i < n; ++i)
+	{
+		a = (byte)*ap++;
+		c = (char)*cp++;
+
+		ta = (byte)*tap++;
+		tc = (char)*tcp++;
+
+		/* What are we drawing? */
+		if (Term_is_bigtiled(ox + i, oy))
+		{
+			tiles = viewtiles.color;
+			mask = viewtiles.mask;
+			wid = viewtiles.CellWidth;
+			hgt = viewtiles.CellHeight;
+		}
+		else
+		{
+			tiles = maptiles.color;
+			mask = maptiles.mask;
+			wid = maptiles.CellWidth;
+			hgt = maptiles.CellHeight;
+		}
+
+		/* For extra speed - cache these values */
+		x1 = (c & 0x7F) * wid;
+		y1 = (a & 0x7F) * hgt;
+
+		/* For extra speed - cache these values */
+		x2 = (tc & 0x7F) * wid;
+		y2 = (ta & 0x7F) * hgt;
+
+		if (mask) {
+			/* Draw terrain */
+			XPutImage(Metadpy->dpy, td->win->win,
+						clr[0]->gc,
+						tiles,
+						x2, y2,
+						x, y,
+						wid, hgt);
+			/* Draw object */
+			if (((x1 != x2) || (y1 != y2))) {
+				XSetFunction(Metadpy->dpy, clr[0]->gc, GXand);
+				XPutImage(Metadpy->dpy, td->win->win,
+							clr[0]->gc,
+							mask,
+							x1, y1,
+							x, y,
+							wid, hgt);
+				XSetFunction(Metadpy->dpy, clr[0]->gc, GXor);
+				XPutImage(Metadpy->dpy, td->win->win,
+							clr[0]->gc,
+							tiles,
+							x1, y1,
+							x, y,
+							wid, hgt);
+				XSetFunction(Metadpy->dpy, clr[0]->gc, GXcopy);
+			}
+		} else {
+			/* Optimise the common case */
+			if (((x1 == x2) && (y1 == y2)) ||
+			    !(((byte)ta & 0x80) && ((byte)tc & 0x80)))
+			{
+				/* Draw object / terrain */
+				XPutImage(Metadpy->dpy, td->win->win,
+							clr[0]->gc,
+							tiles,
+							x1, y1,
+							x, y,
+							wid, hgt);
+			} else {
+				/* This section has not been tested */
+				/* Draw terrain */
+				XPutImage(Metadpy->dpy, td->win->win,
+							clr[0]->gc,
+							tiles,
+							x2, y2,
+							x, y,
+							wid, hgt);
+				/* Draw object */
+				XSetFunction(Metadpy->dpy, clr[0]->gc, GXor);
+				XPutImage(Metadpy->dpy, td->win->win,
+							clr[0]->gc,
+							tiles,
+							x1, y1,
+							x, y,
+							wid, hgt);
+				XSetFunction(Metadpy->dpy, clr[0]->gc, GXcopy);
+			}
+		}
+			
+		x += wid;
+	}
+
+	/* Success */
+	return (0);
+}
+
+errr Term_pict_alpha_x11(int ox, int oy, int n, const int *ap, const wchar_t *cp, const int *tap, const wchar_t *tcp)
+{
+	int i;
+	int x1 = 0, y1 = 0;
+
+	byte a;
+	char c;
+
+	byte ta;
+	char tc;
+	
+	int x, y;
+	int x2, y2;
+
+	term_data *td = (term_data*)(Term->data);
+	
+	int wid, hgt;
+	XImage *tiles;
+	XImage *mask;
+
+	/* Starting point */
+	/*square_to_pixel(&x, &y, ox, oy);*/
+	x = ox * td->tile_wid + Infowin->ox;
+	y = oy * td->tile_hgt + Infowin->oy;
+	
+	for (i = 0; i < n; ++i)
+	{
+		a = (*ap++) & 0x7f;
+		c = (*cp++) & 0x7f;
+
+		ta = (*tap++) & 0x7f;
+		tc = (*tcp++) & 0x7f;
+
+		/* What are we drawing? */
+		if (Term_is_bigtiled(ox + i, oy))
+		{
+			tiles = viewtiles.color;
+			mask = viewtiles.mask;
+			wid = viewtiles.CellWidth;
+			hgt = viewtiles.CellHeight;
+		}
+		else
+		{
+			tiles = maptiles.color;
+			mask = maptiles.mask;
+			wid = maptiles.CellWidth;
+			hgt = maptiles.CellHeight;
+		}
+
+		/* For extra speed - cache these values */
+		x1 = (c & 0x7F) * wid;
+		y1 = (a & 0x7F) * hgt;
+
+		/* For extra speed - cache these values */
+		x2 = (tc & 0x7F) * wid;
+		y2 = (ta & 0x7F) * hgt;
+
+		/* Optimise the common case */
+		if (((x1 == x2) && (y1 == y2)) ||
+		    !(((byte)ta & 0x80) && ((byte)tc & 0x80)))
+		{
+			/* Draw object / terrain */
+			XPutImage(Metadpy->dpy, td->win->win,
+						clr[0]->gc,
+						tiles,
+						x1, y1,
+						x, y,
+						wid, hgt);
+		} else {
+			/* This section has not been tested */
+			/* Draw terrain */
+			XPutImage(Metadpy->dpy, td->win->win,
+						clr[0]->gc,
+						tiles,
+						x2, y2,
+						x, y,
+						wid, hgt);
+			/* Draw object */
+			XSetFunction(Metadpy->dpy, clr[0]->gc, GXor);
+			XPutImage(Metadpy->dpy, td->win->win,
+						clr[0]->gc,
+						tiles,
+						x1, y1,
+						x, y,
+						wid, hgt);
+			XSetFunction(Metadpy->dpy, clr[0]->gc, GXcopy);
+		}
+			
+		x += wid;
+	}
+
+	/* Success */
+	return (0);
+}
+
+#endif /* USE_GRAPHICS */
+
+extern int main_menu_x11(metadpy *mdpy, term_data *data, int data_count, int mx, int my);
+
+extern bool use_main_menu; /* whether a port is using the textui menu bar */
+extern int (*main_menu_bar_fn) (keycode_t); /* the button function for the textui menu bar */
+int menu_bar_x11(keycode_t buttonid)
+{
+	if (buttonid == ESCAPE) {
+		/* show the main context menu */
+		int ret = 0;
+		bool ikf = inkey_flag;
+		/*while ((ret = main_menu_x11(Metadpy, data, MAX_TERM_DATA, (COL_MAP>>1), 1)) == 3);*/
+		inkey_flag = ikf;
+		if (ret <= 1)
+			Term_redraw();
+	}
+	return 1;
 }
 
 /*
@@ -2258,14 +2403,14 @@ static bool save_prefs(const char *ini_file)
 
 	strnfmt(buf, 128, "%d", arg_rebalance ? 1 : 0);
 	ini_setting_set_string_def(ini, "Angband", "Rebalance", buf, 128, "0");
-#if 0
+
 #ifdef SUPPORT_GAMMA
-	if (gamma_correction > 0) {
-		strnfmt(buf, 128, "%d", gamma_correction);
-		ini_setting_set_string(ini, "Angband", "Gamma", buf, 128);
+	if (gamma_val > 0) {
+		strnfmt(buf, 128, "%d", gamma_val);
+		ini_setting_set_string_def(ini, "Angband", "Gamma", buf, 128, "0");
 	}
 #endif /* SUPPORT_GAMMA */
-#endif
+
 	/* Save window prefs */
 	for (i = 0; i < MAX_TERM_DATA; i++)
 	{
@@ -2324,6 +2469,8 @@ static void load_prefs_aux(term_data *td, ini_settings *ini, const char *sec_nam
 }
 
 
+int default_layout_x11(term_data *data, int maxterms, metadpy *dpy);
+
 /*
  * Load the "prefs"
  */
@@ -2363,14 +2510,13 @@ static bool load_prefs(const char *ini_file)
 	/* Extract the "arg_rebalance" flag */
 	arg_rebalance = (ini_setting_get_uint32(ini, "Angband", "Rebalance", 0) != 0);
 
-#if 0
 #ifdef SUPPORT_GAMMA
 
 	/* Extract the gamma correction */
-	gamma_correction = ini_setting_get_uint32(ini, "Angband", "Gamma", 0);
+	gamma_val = ini_setting_get_uint32(ini, "Angband", "Gamma", gamma_val);
 
 #endif /* SUPPORT_GAMMA */
-#endif
+
 	/* Load window prefs */
 	for (i = 0; i < MAX_TERM_DATA; i++)
 	{
@@ -2529,6 +2675,14 @@ static errr term_data_init(term_data *td, int i)
 	Infowin_init_top(x, y, wid, hgt, 0,
 	                 Metadpy->fg, Metadpy->bg);
 
+	/* check the estimated size of the window manager's border */
+	if ((Infowin->x != x) && (Infowin->x - x > Metadpy->wmbdr_x)) {
+		Metadpy->wmbdr_x = Infowin->x - x;
+	}
+	if ((Infowin->y != y) && (Infowin->y - y > Metadpy->wmbdr_y)) {
+		Metadpy->wmbdr_y = Infowin->y - y;
+	}
+
 	/* Ask for certain events */
 	Infowin_set_mask(ExposureMask | StructureNotifyMask | KeyPressMask
 			 | ButtonPressMask);
@@ -2656,6 +2810,10 @@ static void hook_quit(const char *str)
 		settings[0] = '\0';
 	}
 
+#ifdef USE_GRAPHICS
+	close_graphics_x11();
+#endif /* USE_GRAPHICS */
+
 	/* Free allocated data */
 	for (i = 0; i < MAX_TERM_DATA; i++)
 	{
@@ -2753,6 +2911,10 @@ errr init_x11(int argc, char **argv)
 		plog_fmt("Ignoring option: %s", argv[i]);
 	}
 
+	/* load the possible graphics modes */
+	if (!init_graphics_modes("graphics.txt")) {
+		plog("Graphics list load failed");
+	}
 
 	/* Initialize default term data */
 	for (i = 0; i < MAX_TERM_DATA; i++) {
@@ -2789,7 +2951,6 @@ errr init_x11(int argc, char **argv)
 
 	/* Init the Metadpy if possible */
 	if (Metadpy_init_name(dpy_name)) return (-1);
-
 
 	/* Prepare cursor color */
 	xor = ZNEW(infoclr);
@@ -2884,9 +3045,30 @@ errr init_x11(int argc, char **argv)
 	/* Activate the "Angband" window screen */
 	Term_activate(&data[0].t);
 
+	/* tell the game to use the x11 system menu */
+	/*use_main_menu = TRUE;
+	main_menu_bar_fn = menu_bar_x11;*/
 
 	/* Activate hook */
 	quit_aux = hook_quit;
+
+#ifdef USE_GRAPHICS
+	/* Try graphics (since the resizing is slow, and it feels
+	 * faster to do the resizing here) */
+	if (arg_graphics)
+	{
+		int res;
+		res = init_graphics_x11();
+		if (res < 0) {
+			use_graphics = GRAPHICS_NONE;
+			tile_width = 1;
+			tile_height = 1;
+			close_graphics_x11();
+		} else {
+			use_graphics = arg_graphics;
+		}
+	}
+#endif /* USE_GRAPHICS */
 
 	/* Success */
 	return (0);
