@@ -17,21 +17,24 @@
  */
 
 #include "angband.h"
+#include "cmds.h"
+#include "files.h"
 #include "ui-menu.h"
 #include "object/tvalsval.h"
 //#include "button.h"
 #include "x11-term.h"
 #include "grafmode.h"
 #include "x11-tile.h"
-#if 0
-extern bool SaveWindow(infowin *win, char*filename);
+#include "pickfile.h"
+
+extern bool SaveWindow_x11(infowin *win, char*filename);
 extern errr Term_xtra_x11_react(void);
-extern errr Term_xtra_x11_clear(void);
+extern errr Infowin_wipe(void);
 extern errr context_menu_command(int mx, int my);
 
 extern infofnt *Infofnt;
 errr Infofnt_nuke(void);
-errr Infofnt_init_data(cptr name);
+errr Infofnt_init_data(const char *name);
 
 #ifdef USE_GRAPHICS
 extern XTilesheet tiles; /* tiles loaded from disk */
@@ -44,14 +47,13 @@ int main_menu_x11_graphics_mult(metadpy *mdpy, int mx, int my)
 	region r;
 	int selected, tw, th;
 	char *labels;
-	graphics_mode *mode;
 
 	/* Paranoia */
 	if (!mdpy) {
 		return 0;
 	}
-	tw = tile_width_mult;
-	th = tile_height_mult;
+	tw = tile_width;
+	th = tile_height;
 
 	m = menu_dynamic_new();
 	if (!m) {
@@ -63,7 +65,7 @@ int main_menu_x11_graphics_mult(metadpy *mdpy, int mx, int my)
 
 	/* list tile multipliers */
 #define TILE_MULT_CONTEXT(w,h,i) \
-	if ((tile_width_mult == w) && (tile_height_mult == h)) { \
+	if ((tile_width == w) && (tile_height == h)) { \
 		menu_dynamic_add(m, #w"x"#h, i); \
 		menu_dynamic_set_select(m); \
 	} else { \
@@ -247,11 +249,10 @@ int main_menu_x11_graphics_mult(metadpy *mdpy, int mx, int my)
 		res = ResizeTiles(dpy, &viewtiles, &tiles);
 
 		/* Clear screen */
-		Term_xtra_x11_clear();
+		Infowin_wipe();
 
 		/* Hack - redraw everything */
-		if (Term->resize_hook)
-			Term->resize_hook();
+		do_cmd_redraw();
 	}
 	return 1;
 }
@@ -372,7 +373,6 @@ int main_menu_x11_term_tile_size(term_data *td, int i, metadpy *mdpy, int mx, in
 	region r;
 	int selected, tw, th;
 	char *labels;
-	graphics_mode *mode;
 
 	/* Paranoia */
 	if (!td || !(td->fnt) || !mdpy) {
@@ -547,16 +547,15 @@ int main_menu_x11_term_tile_size(term_data *td, int i, metadpy *mdpy, int mx, in
 			res = ResizeTiles(dpy, &viewtiles, &tiles);
 
 			FreeTiles(&maptiles);
-			viewtiles.CellWidth = td->tile_wid;
-			viewtiles.CellHeight = td->tile_hgt;
+			maptiles.CellWidth = td->tile_wid;
+			maptiles.CellHeight = td->tile_hgt;
 			res = ResizeTiles(dpy, &maptiles, &tiles);
 		}
 		/* Clear screen */
-		Term_xtra_x11_clear();
+		Infowin_wipe();
 
 		/* Hack - redraw everything */
-		if (Term->resize_hook)
-			Term->resize_hook();
+		do_cmd_redraw();
 	}
 	return 1;
 }
@@ -669,7 +668,7 @@ int main_menu_x11_term(term_data *td, int i, metadpy *mdpy, int mx, int my)
 				}
 				if (load) {
 					infofnt *newfnt;
-					MAKE(newfnt, infofnt);
+					newfnt = ZNEW(infofnt);
 					Infofnt_set(newfnt);
 					if (!newfnt || Infofnt_init_data(file)) {
 						plog_fmt("Font load failed: %s",file);
@@ -745,7 +744,7 @@ int main_menu_x11_pick_term(term_data *td, int n, metadpy *mdpy, int mx, int my)
 	int selected, i;
 	char *labels;
 
-	if (n ==1) {
+	if (n == 1) {
 		int ret;
 		/* if there is only one possible term, use it automatically */
 		ret = main_menu_x11_term(&(td[0]), 1, mdpy, mx, my);
@@ -830,8 +829,6 @@ int main_menu_x11_other(int mx, int my)
 
 	menu_dynamic_add_label(m, "Version", ' ', 7, labels);
 	menu_dynamic_add_label(m, "", '\0', 1, labels);
-	menu_dynamic_add_label(m, "Access Lists", '$', 11, labels);
-	menu_dynamic_add_label(m, "", '\0', 1, labels);
 	menu_dynamic_add_label(m, "Save Screenshot", '*', 3, labels);
 	menu_dynamic_add_label(m, "", '\0', 1, labels);
 	menu_dynamic_add_label(m, "Reset Terminal Layout", ' ', 4, labels);
@@ -839,8 +836,8 @@ int main_menu_x11_other(int mx, int my)
 	menu_dynamic_add_label(m, "^Redraw", 'R', 8, labels);
 	menu_dynamic_add_label(m, "", '\0', 1, labels);
 	menu_dynamic_add_label(m, "Dump Char", 'f', 2, labels);
-	menu_dynamic_add_label(m, "Dump Screen", '(', 9, labels);
-	menu_dynamic_add_label(m, "Load Screen", ')', 10, labels);
+	menu_dynamic_add_label(m, "Load Screen", '(', 9, labels);
+	menu_dynamic_add_label(m, "Dump Screen", ')', 10, labels);
 	menu_dynamic_add_label(m, "", '\0', 1, labels);
 	menu_dynamic_add_label(m, "^Suicide", 'Q', 5, labels);
 	menu_dynamic_add_label(m, "", '\0', 1, labels);
@@ -891,8 +888,8 @@ int main_menu_x11_other(int mx, int my)
 		{
 			/* dump the character to disk */
 			char tmp[160] = "";
-			strnfmt(tmp, 160, "%s.txt", player_base);
-			if (get_string(tmp, 160, "Filename for char dump:")) {
+			strnfmt(tmp, 160, "%s.txt", player_safe_name(p_ptr));
+			if (get_string("Filename for char dump:", tmp, 160)) {
 				/* Dump a character file */
 				(void)file_character(tmp, TRUE);
 			}
@@ -930,7 +927,7 @@ int main_menu_x11_other(int mx, int my)
 	case 5:
 		{
 			/* have the character commit suicide, and exit to initial screen */
-			do_cmd_suicide();
+			cmd_insert(CMD_SUICIDE);
 		} break;
 	/*case 0:*/
 	case 6:
@@ -957,11 +954,6 @@ int main_menu_x11_other(int mx, int my)
 		{
 			/* load the screen from disk */
 			do_cmd_load_screen();
-		} break;
-	case 11:
-		{
-			/* access  lists */
-			do_cmd_list();
 		} break;
 	}
 
@@ -1046,12 +1038,12 @@ int main_menu_x11(metadpy *mdpy, term_data *data, int data_count, int mx, int my
 	case 2:
 		{
 			/* save and exit */
-			do_cmd_save_and_exit();
+			cmd_insert(CMD_QUIT);
 		} break;
 	case 3:
 		{
 			/* save */
-			do_cmd_save_game(FALSE);
+			cmd_insert(CMD_SAVE);
 		} break;
 	case 4:
 		{
@@ -1072,12 +1064,13 @@ int main_menu_x11(metadpy *mdpy, term_data *data, int data_count, int mx, int my
 	case 6:
 		{
 			/* show help */
+			/*cmd_insert(CMD_HELP);*/
 			do_cmd_help();
 		} break;
 	case 7:
 		{
 			/* show options */
-			do_cmd_options(OPT_FLAG_SERVER | OPT_FLAG_PLAYER);
+			do_cmd_xxx_options();
 		} break;
 	case 8:
 		{
@@ -1089,11 +1082,10 @@ int main_menu_x11(metadpy *mdpy, term_data *data, int data_count, int mx, int my
 	case 9:
 		{
 			/* show the list of commands */
-			context_menu_command(mx+(r.width>>1), my+1);
+			/*context_menu_command(mx+(r.width>>1), my+1);*/
 		} break;
 	}
 
 	return 1;
 }
-#endif /* if 0 */
 

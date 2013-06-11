@@ -768,7 +768,7 @@ static errr Infowin_locate(int x, int y, int w, int h)
 /*
  * Visually clear Infowin
  */
-static errr Infowin_wipe(void)
+errr Infowin_wipe(void)
 {
 	/* Execute the request */
 	XClearWindow(Metadpy->dpy, Infowin->win);
@@ -1073,7 +1073,7 @@ static errr Infoclr_change_fg(Pixell fg)
 /*
  * Nuke an old 'infofnt'.
  */
-static errr Infofnt_nuke(void)
+errr Infofnt_nuke(void)
 {
 	infofnt *ifnt = Infofnt;
 
@@ -1132,7 +1132,7 @@ static errr Infofnt_prepare(XFontSet fs)
  * Inputs:
  *	name: The name of the requested Font
  */
-static errr Infofnt_init_data(const char *name)
+errr Infofnt_init_data(const char *name)
 {
 	XFontSet fs;
 	char **missing;
@@ -1814,7 +1814,7 @@ static errr Term_xtra_x11_level(int v)
 /*
  * React to changes
  */
-static errr Term_xtra_x11_react(void)
+errr Term_xtra_x11_react(void)
 {
 	int i;
 
@@ -2251,15 +2251,15 @@ errr Term_pict_alpha_x11(int ox, int oy, int n, const int *ap, const wchar_t *cp
 
 extern int main_menu_x11(metadpy *mdpy, term_data *data, int data_count, int mx, int my);
 
-extern bool use_main_menu; /* whether a port is using the textui menu bar */
-extern int (*main_menu_bar_fn) (keycode_t); /* the button function for the textui menu bar */
-int menu_bar_x11(keycode_t buttonid)
+extern bool use_textui_menu; /* whether a port is using the textui menu bar */
+extern int (*textui_menu_bar_fn) (keycode_t); /* the button function for the textui menu bar */
+int textui_bar_x11(keycode_t buttonid)
 {
 	if (buttonid == ESCAPE) {
 		/* show the main context menu */
-		int ret = 0;
+		int ret;
 		bool ikf = inkey_flag;
-		/*while ((ret = main_menu_x11(Metadpy, data, MAX_TERM_DATA, (COL_MAP>>1), 1)) == 3);*/
+		while ((ret = main_menu_x11(Metadpy, data, MAX_TERM_DATA, (COL_MAP>>1), 1)) == 3);
 		inkey_flag = ikf;
 		if (ret <= 1)
 			Term_redraw();
@@ -3030,8 +3030,8 @@ errr init_x11(int argc, char **argv)
 	Term_activate(&data[0].t);
 
 	/* tell the game to use the x11 system menu */
-	/*use_main_menu = TRUE;
-	main_menu_bar_fn = menu_bar_x11;*/
+	use_textui_menu = TRUE;
+	textui_menu_bar_fn = textui_bar_x11;
 
 	/* Activate hook */
 	quit_aux = hook_quit;

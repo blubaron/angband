@@ -307,6 +307,9 @@ static struct cmd_info *textui_action_menu_choose(void)
 /* XXX 2 shoud be KEYMAP_MAX */
 static struct cmd_info *converted_list[2][UCHAR_MAX+1];
 
+/* globals for a textui system menu */
+bool use_textui_menu; /* whether a port is using the textui menu bar */
+int (*textui_menu_bar_fn) (keycode_t); /* the button function for the textui menu bar */
 
 /*
  * Initialise the command list.
@@ -864,8 +867,12 @@ static bool textui_process_key(struct keypress kp, int count)
 	/* XXXmacro this needs rewriting */
 	keycode_t c = kp.code;
 
-	if (c == '\0' || c == ESCAPE || c == ' ' || c == '\a')
+	if (c == '\0' || c == ESCAPE || c == ' ' || c == '\a') {
+		if ((c == ESCAPE) && use_textui_menu && textui_menu_bar_fn) {
+			(*textui_menu_bar_fn)(ESCAPE);
+		}
 		return TRUE;
+	}
 
 	if (c == KC_ENTER) {
 		cmd = textui_action_menu_choose();
