@@ -862,7 +862,14 @@ static void dynamic_display(menu_type *m, int oid, bool cursor,
 		assert(entry);
 	}
 
-	Term_putstr(col, row, width, color, entry->text);
+	if (entry->text[0] == '$') {
+		if (entry->text[1] != '$') {
+			color = curs_attrs[CURS_UNKNOWN][0 != cursor];
+		}
+		Term_putstr(col, row, width, color, entry->text+1);
+	} else {
+		Term_putstr(col, row, width, color, entry->text);
+	}
 }
 
 static const menu_iter dynamic_iter = {
