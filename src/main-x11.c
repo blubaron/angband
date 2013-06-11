@@ -1801,6 +1801,10 @@ static errr CheckEvent(bool wait)
 			else if (xev->xbutton.button == Button5) z = 5;
 			else z = 0;
 
+			/* switch buttons 2 and 3 to match other platforms (for 3 button mice) */
+			if (z == 3) z = 2;
+			else if (z == 2) z = 3;
+
 			/* The co-ordinates are only used in Angband format. */
 			pixel_to_square(&x, &y, x, y);
 			if (press) Term_mousepress(x, y, z);
